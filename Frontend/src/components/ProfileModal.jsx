@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Lock, Camera, X, Check, AlertCircle, Upload, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Camera, X, Check, AlertCircle, Upload, Eye, EyeOff, Mail, Shield, CheckCircle } from 'lucide-react';
 import { API_BASE, authFetch } from '../lib/api';
 import { saveStoredAvatar, getStoredAvatar } from '../lib/avatar';
 
@@ -47,6 +47,122 @@ function ProfileAlert({ feedback }) {
         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
       )}
       <span className="leading-relaxed flex-1">{feedback.text}</span>
+    </div>
+  );
+}
+
+function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
+  const [fullName, setFullName] = useState(
+    currentUser.name || currentUser.username || currentUser.first_name || 'User'
+  );
+  const [infoFeedback, setInfoFeedback] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveInfo = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setInfoFeedback(null);
+    try {
+      if (localStorage.getItem('tester_user')) {
+        const existing = JSON.parse(localStorage.getItem('tester_user') || '{}');
+        localStorage.setItem('tester_user', JSON.stringify({ ...existing, name: fullName }));
+      }
+      if (localStorage.getItem('user')) {
+        const existing = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...existing, name: fullName }));
+      }
+      if (localStorage.getItem('test_name')) {
+        localStorage.setItem('test_name', fullName);
+      }
+
+      if (onUpdateUser) {
+        onUpdateUser({ name: fullName });
+      }
+      window.dispatchEvent(new Event('user_profile_updated'));
+      setInfoFeedback({ type: 'success', text: 'General info saved successfully!' });
+    } catch (err) {
+      setInfoFeedback({ type: 'error', text: 'Failed to save general info.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <ProfileAlert feedback={infoFeedback} />
+
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">Public Info</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Manage your public account name and role title.</p>
+        </div>
+
+        <form onSubmit={handleSaveInfo} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div>
+              <label htmlFor="modal-name" className="block text-xs font-semibold text-slate-700 mb-1">
+                Full Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  id="modal-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all text-slate-900 font-medium"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="modal-role" className="block text-xs font-semibold text-slate-700 mb-1">
+                Job Title (Read-Only)
+              </label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  id="modal-role"
+                  value={currentRole}
+                  readOnly
+                  disabled
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100/70 text-slate-500 font-medium cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="modal-email" className="block text-xs font-semibold text-slate-700 mb-1">
+              Email Address (Read-Only)
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="email"
+                id="modal-email"
+                value={userEmail}
+                readOnly
+                disabled
+                className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100/70 text-slate-500 font-mono font-medium cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#e11d48] hover:bg-[#be123c] text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-98 disabled:opacity-50"
+            >
+              <CheckCircle size={15} />
+              {isSaving ? 'Saving...' : 'Save General Info'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -221,7 +337,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
   const userEmail = currentUser.company_email || currentUser.email || '';
   const currentAvatar = currentUser.avatarUrl || currentUser.avatar || null;
 
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('info');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -391,7 +507,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">Account Profile</h2>
-              <p className="text-[11px] text-slate-500 font-medium">Manage profile picture & security settings</p>
+              <p className="text-[11px] text-slate-500 font-medium">Manage profile info, picture & security settings</p>
             </div>
           </div>
           <button
@@ -439,23 +555,36 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
 
         {/* Segmented Control Tabs */}
         <div className="p-3 px-5 bg-white border-b border-slate-100">
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/80 rounded-xl">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100/80 rounded-xl">
             <button
               type="button"
-              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'info'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              onClick={() => setActiveTab('info')}
+            >
+              <User size={14} />
+              Public Info
+            </button>
+
+            <button
+              type="button"
+              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'profile'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
               onClick={() => setActiveTab('profile')}
             >
-              <User size={14} />
-              Profile Picture
+              <Camera size={14} />
+              Picture
             </button>
 
             <button
               type="button"
-              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'password'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
@@ -463,13 +592,22 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
               onClick={() => setActiveTab('password')}
             >
               <Lock size={14} />
-              Change Password
+              Password
             </button>
           </div>
         </div>
 
         {/* Content Body */}
         <div className="p-5">
+          {activeTab === 'info' && (
+            <PublicInfoTab
+              currentUser={currentUser}
+              currentRole={currentRole}
+              userEmail={userEmail}
+              onUpdateUser={onUpdateUser}
+            />
+          )}
+
           {activeTab === 'profile' && (
             <ProfilePictureTab
               avatarFeedback={avatarFeedback}
