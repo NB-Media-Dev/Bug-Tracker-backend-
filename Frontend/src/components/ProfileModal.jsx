@@ -55,9 +55,12 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
   const [fullName, setFullName] = useState(
     currentUser.name || currentUser.username || currentUser.first_name || 'User'
   );
+<<<<<<< HEAD
   const [jobTitle, setJobTitle] = useState(
     currentUser.jobTitle || currentRole || 'Member'
   );
+=======
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
   const [infoFeedback, setInfoFeedback] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -66,6 +69,7 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
     setIsSaving(true);
     setInfoFeedback(null);
     try {
+<<<<<<< HEAD
       const empId = currentUser.id || currentUser.pk;
       if (empId) {
         await authFetch(`${API_BASE}/api/users/${empId}/`, {
@@ -101,6 +105,27 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
       setInfoFeedback({ type: 'success', text: 'Public Info updated successfully!' });
     } catch (err) {
       setInfoFeedback({ type: 'error', text: 'Failed to update Public Info.' });
+=======
+      if (localStorage.getItem('tester_user')) {
+        const existing = JSON.parse(localStorage.getItem('tester_user') || '{}');
+        localStorage.setItem('tester_user', JSON.stringify({ ...existing, name: fullName }));
+      }
+      if (localStorage.getItem('user')) {
+        const existing = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...existing, name: fullName }));
+      }
+      if (localStorage.getItem('test_name')) {
+        localStorage.setItem('test_name', fullName);
+      }
+
+      if (onUpdateUser) {
+        onUpdateUser({ name: fullName });
+      }
+      window.dispatchEvent(new Event('user_profile_updated'));
+      setInfoFeedback({ type: 'success', text: 'General info saved successfully!' });
+    } catch (err) {
+      setInfoFeedback({ type: 'error', text: 'Failed to save general info.' });
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
     } finally {
       setIsSaving(false);
     }
@@ -113,7 +138,11 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-4">
         <div>
           <h2 className="text-sm font-bold text-slate-900">Public Info</h2>
+<<<<<<< HEAD
           <p className="text-xs text-slate-500 mt-0.5">Manage your public display name and job title.</p>
+=======
+          <p className="text-xs text-slate-500 mt-0.5">Manage your public account name and role title.</p>
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
         </div>
 
         <form onSubmit={handleSaveInfo} className="space-y-4">
@@ -129,27 +158,43 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
                   id="modal-name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
+<<<<<<< HEAD
                   placeholder="Enter full name"
                   required
                   className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all"
+=======
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all text-slate-900 font-medium"
+                  required
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
                 />
               </div>
             </div>
 
             <div>
               <label htmlFor="modal-role" className="block text-xs font-semibold text-slate-700 mb-1">
+<<<<<<< HEAD
                 Job Title / Role
+=======
+                Job Title (Read-Only)
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
               </label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   id="modal-role"
+<<<<<<< HEAD
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="Enter job title"
                   required
                   className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all"
+=======
+                  value={currentRole}
+                  readOnly
+                  disabled
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100/70 text-slate-500 font-medium cursor-not-allowed"
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
                 />
               </div>
             </div>
@@ -172,6 +217,7 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="submit"
@@ -179,6 +225,16 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 active:scale-98"
             >
               {isSaving ? 'Saving...' : 'Save Public Info'}
+=======
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#e11d48] hover:bg-[#be123c] text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-98 disabled:opacity-50"
+            >
+              <CheckCircle size={15} />
+              {isSaving ? 'Saving...' : 'Save General Info'}
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
             </button>
           </div>
         </form>
@@ -582,11 +638,13 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
 
         {/* Segmented Control Tabs */}
         <div className="p-3 px-5 bg-white border-b border-slate-100">
-          <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100/80 rounded-xl">
+          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100/80 rounded-xl">
             <button
               type="button"
               className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'info'
+<<<<<<< HEAD
+=======
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
@@ -594,6 +652,25 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
             >
               <User size={14} />
               Public Info
+            </button>
+
+            <button
+              type="button"
+              className={`py-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'profile'
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              onClick={() => setActiveTab('info')}
+            >
+<<<<<<< HEAD
+              <User size={14} />
+              Public Info
+=======
+              <Camera size={14} />
+              Picture
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
             </button>
 
             <button
@@ -619,6 +696,22 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
               currentRole={currentRole}
               userEmail={userEmail}
               onUpdateUser={onUpdateUser}
+<<<<<<< HEAD
+=======
+            />
+          )}
+
+          {activeTab === 'profile' && (
+            <ProfilePictureTab
+              avatarFeedback={avatarFeedback}
+              fileInputRef={fileInputRef}
+              selectedFile={selectedFile}
+              currentAvatar={currentAvatar}
+              handleRemoveAvatar={handleRemoveAvatar}
+              isRemovingAvatar={isRemovingAvatar}
+              handleUploadAvatar={handleUploadAvatar}
+              isUploadingAvatar={isUploadingAvatar}
+>>>>>>> 2f14e06a8b7c533c3c230d579d998c7d3aea7eb9
             />
           )}
 

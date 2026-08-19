@@ -1,0 +1,30 @@
+# Environment variable files (CRITICAL: Secret protection)
+.env
+.env.*
+*.env
+
+# Frontend / Node
+node_modules/
+dist/
+dist-ssr/
+build/
+*.local
+
+# Backend / Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+db.sqlite3
+media/
+staticfiles/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
