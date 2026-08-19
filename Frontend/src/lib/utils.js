@@ -17,16 +17,13 @@ export const getProjectAcronym = (projectName) => {
   }
   const word = words[0];
   if (word.length <= 4) return word.toUpperCase();
-  return word.slice(0, 2).toUpperCase();
+  return word.slice(0, 3).toUpperCase();
 };
 
 export const formatBugId = (b, projectIndex = null) => {
   if (!b) return "PRJ-001";
   if (typeof b === "string" || typeof b === "number") {
     const str = String(b);
-    if (!str.toUpperCase().startsWith("BUG-") && !str.toUpperCase().startsWith("BUG_") && !str.startsWith("SAVED-")) {
-      return str;
-    }
     const numStr = str.replace(/\D/g, "");
     const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
     return `PRJ-${seq}`;
@@ -40,12 +37,8 @@ export const formatBugId = (b, projectIndex = null) => {
     return `${acronym}-${seq}`;
   }
 
-  const raw = String(b.bugId || b.bug_id || "");
-  if (raw && !raw.toUpperCase().startsWith("BUG-") && !raw.toUpperCase().startsWith("BUG_") && !raw.startsWith("SAVED-")) {
-    return raw;
-  }
-
-  const numStr = String(b.id || b.rawId || raw || "1").replace(/\D/g, "");
+  const raw = String(b.bugId || b.bug_id || b.id || b.rawId || "");
+  const numStr = raw.replace(/\D/g, "");
   const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
   return `${acronym}-${seq}`;
 };
@@ -87,7 +80,8 @@ export const formatNotificationMessage = (message, projectName = "General", bugs
     return `${pName} progress is ${pct}%`;
   }
 
-  return message.replace(/(\[?BUG-(\d+)\]?)/gi, (match, fullMatch, num) => {
+  return message.replace(/(\[?([A-Z0-9]+-\d+|\bBUG-\d+|\bGE-\d+)\]?)/gi, (match, fullMatch, bugIdStr) => {
+    const num = bugIdStr.replace(/\D/g, "");
     const formatted = formatBugId({ id: num, module: projectName });
     if (match.startsWith("[")) {
       return `[${formatted}]`;

@@ -4,14 +4,15 @@ import { API_BASE, authFetch } from "../../lib/api";
 import { downloadFile, escapeCSV, formatDateStandard } from "../../lib/utils";
 
 const getProjectAcronym = (projectName) => {
-  if (!projectName?.trim()) return "tpa";
+  if (!projectName?.trim()) return "PRJ";
   const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
   const words = clean.split(/\s+/).filter(Boolean);
   if (words.length > 1) {
-    return words.map((w) => w[0]).join("").toLowerCase();
+    return words.map((w) => w[0]).join("").toUpperCase();
   }
   const word = words[0];
-  return word.slice(0, 3).toLowerCase();
+  if (word.length <= 4) return word.toUpperCase();
+  return word.slice(0, 3).toUpperCase();
 };
 
 function DeveloperHistory({ developer }) {
@@ -107,10 +108,12 @@ function DeveloperHistory({ developer }) {
       }),
     ];
 
-    const combined = rawCombined.map((item, idx) => {
+    const projectBugCounts = {};
+    const combined = rawCombined.map((item) => {
       const projAcronym = getProjectAcronym(item.module);
-      const sequenceNum = String(idx + 1).padStart(3, "0");
-      const customBugId = `${formattedDevId}-${projAcronym}-${sequenceNum}`;
+      projectBugCounts[projAcronym] = (projectBugCounts[projAcronym] || 0) + 1;
+      const sequenceNum = String(projectBugCounts[projAcronym]).padStart(3, "0");
+      const customBugId = `${projAcronym}-${sequenceNum}`;
       return {
         ...item,
         id: item.rawId || customBugId,

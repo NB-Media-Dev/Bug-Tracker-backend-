@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Info,
   PackageCheck,
+  CheckCircle,
   X,
   ArrowRight,
 } from "lucide-react";
@@ -138,6 +139,23 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
       };
     }
 
+    if (type.includes("status") || msg.includes("status updated") || type === "bug_updated") {
+      const isClosed = msg.includes("closed") || msg.includes("resolved");
+      return {
+        title: "Bug Status Updated",
+        badgeText: isClosed ? "Status Update" : (rawSev ? rawSev.charAt(0).toUpperCase() + rawSev.slice(1) : "Update"),
+        accentBar: isClosed ? "bg-emerald-600" : "bg-blue-600",
+        badgeClass: isClosed
+          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+          : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
+        iconContainer: isClosed
+          ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400"
+          : "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
+        icon: isClosed ? <CheckCircle className="h-4 w-4" /> : <Info className="h-4 w-4" />,
+        actionButton: isClosed ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white",
+      };
+    }
+
     let severity = "medium";
     if (rawSev.includes("critical") || rawSev.includes("blocker") || msg.includes("critical")) {
       severity = "critical";
@@ -208,22 +226,14 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
       {activeAlerts.map((alert) => {
         const config = getAlertStyle(alert);
         const projName = alert.project_name || alert.module || alert.bug_report?.module || "General";
-        const msgMatch = alert.message ? alert.message.match(/\[([A-Z0-9]+-\d+)\]/i) || alert.message.match(/([A-Z0-9]+-\d+)/i) : null;
+        const msgMatch = alert.message ? alert.message.match(/\[([A-Z0-9]+-\d+|\bGE-\d+|\bBUG-\d+|\d+)\]/i) || alert.message.match(/([A-Z0-9]+-\d+|\bGE-\d+|\bBUG-\d+|\d+)/i) : null;
         const rawBugId = msgMatch ? msgMatch[1] : (alert.bug_id || alert.bug_report?.bug_id || alert.id || "");
         
-        let bugId = "";
-        if (rawBugId && typeof rawBugId === "string" && rawBugId.includes("-") && !rawBugId.toUpperCase().startsWith("BUG-")) {
-          bugId = rawBugId.toUpperCase();
-        } else if (rawBugId) {
-          bugId = formatBugId(
-            {
-              bugId: rawBugId,
-              module: projName,
-              id: rawBugId,
-            },
-            0
-          );
-        }
+        const bugId = formatBugId({
+          bugId: rawBugId,
+          module: projName,
+          id: rawBugId,
+        });
 
         return (
           <div

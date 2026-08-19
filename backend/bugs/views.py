@@ -290,10 +290,26 @@ class BugReportDetailView(APIView):
 
     def _send_patch_notifications(self, updated_bug, new_status, old_status):
         try:
-            if not new_status or new_status == old_status:
-                return
-                
-            msg = f'Bug [{updated_bug.bug_id}] status updated to "{updated_bug.status}"'
+            proj_name = updated_bug.module or "General"
+            clean_proj = ''.join(e for e in proj_name if e.isalnum() or e.isspace()).strip()
+            words = clean_proj.split()
+            if len(words) > 1:
+                acronym = ''.join(w[0] for w in words).upper()
+            elif clean_proj:
+                acronym = clean_proj[:4].upper() if len(clean_proj) <= 4 else clean_proj[:3].upper()
+            else:
+                acronym = "PRJ"
+
+            proj_bugs = list(BugReport.objects.filter(module__iexact=updated_bug.module).order_by('id'))
+            try:
+                bug_idx = proj_bugs.index(updated_bug) + 1
+            except ValueError:
+                bug_idx = 1
+
+            seq = f"{bug_idx:03d}"
+            formatted_id = f"{acronym}-{seq}"
+
+            msg = f'Bug [{formatted_id}] status updated to "{updated_bug.status}"'
             if new_status in ['Open', 'Closed', 'Not Fixed'] and updated_bug.developer_name and updated_bug.developer_name != 'Unassigned':
                 dev_name_clean = updated_bug.developer_name.split('(')[0].strip()
                 dev_email = ''
@@ -311,7 +327,8 @@ class BugReportDetailView(APIView):
                     recipient_id=updated_bug.developer_id or 'DEV001',
                     notification_type='bug_updated',
                     message=msg,
-                    bug_report=updated_bug
+                    bug_report=updated_bug,
+                    project_name=updated_bug.module or "General"
                 )
 
             self._create_cto_project_notification(updated_bug)

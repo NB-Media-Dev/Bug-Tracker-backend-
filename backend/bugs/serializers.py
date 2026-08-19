@@ -103,6 +103,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     severity = serializers.SerializerMethodField()
     bug_id = serializers.SerializerMethodField()
     bug_title = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Notification
@@ -112,6 +113,13 @@ class NotificationSerializer(serializers.ModelSerializer):
             'is_read', 'created_at', 'bug_report', 'bugReportId',
             'project_name', 'sender_id', 'severity', 'bug_id', 'bug_title'
         ]
+
+    def get_project_name(self, obj):
+        if obj.project_name:
+            return obj.project_name
+        if obj.bug_report and obj.bug_report.module:
+            return obj.bug_report.module
+        return 'General'
 
     def get_severity(self, obj):
         if obj.bug_report:
