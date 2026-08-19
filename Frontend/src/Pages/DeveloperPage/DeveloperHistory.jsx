@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { History, Download, Eye } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { downloadFile, escapeCSV } from "../../lib/utils";
+import { downloadFile, escapeCSV, formatDateStandard } from "../../lib/utils";
+
+const getProjectAcronym = (projectName) => {
+  if (!projectName?.trim()) return "tpa";
+  const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return words.map((w) => w[0]).join("").toLowerCase();
+  }
+  const word = words[0];
+  return word.slice(0, 3).toLowerCase();
+};
 
 function DeveloperHistory({ developer }) {
   const [historyLogs, setHistoryLogs] = useState([]);
@@ -13,6 +24,7 @@ function DeveloperHistory({ developer }) {
   const devId =
     developer?.employee_id ||
     (developer?.id ? `DEV${String(developer.id).padStart(3, "0")}` : "DEV001");
+  const formattedDevId = devId.toLowerCase();
 
   const loadHistory = async () => {
     let devSentSubmissions = [];
@@ -48,46 +60,64 @@ function DeveloperHistory({ developer }) {
       console.error("error in loadhistory", e);
     }
 
-    const combined = [
-      ...devSentSubmissions.map((s) => ({
-        id: s.id,
-        bugId: s.id,
-        module: s.projectName || s.project_name || "General",
-        title:
-          s.subject || `${s.projectName || s.project_name} Build Submission`,
-        description: `Project Link: ${s.projectLink || s.project_link || s.zipFileName || "No link"}`,
-        assignedOn:
-          s.date ||
-          (s.date_submitted
-            ? new Date(s.date_submitted).toLocaleDateString()
-            : "N/A"),
-        dueDate: "N/A",
-        testerName: s.claimedBy || s.claimed_by || "Unclaimed",
-        testerId: s.claimedById || s.claimed_by_id || "",
-        devStatus: "Sent Build",
-        testerStatus:
-          s.claimedBy || s.claimed_by
-            ? `Accepted by ${s.claimedBy || s.claimed_by}`
-            : "Sent to Testers",
-        projectLink: s.projectLink || s.project_link,
-        type: "project_build",
-      })),
-      ...devResolvedBugs.map((b) => ({
-        id: b.bugId || `BUG-${b.id}`,
-        bugId: b.bugId || `BUG-${b.id}`,
-        module: b.module || "General",
-        title: b.title,
-        description: b.description,
-        assignedOn: b.assignedOn || "N/A",
-        dueDate: b.dueDate || "N/A",
-        testerName: b.testerName || "Kamatchi",
-        devStatus: b.devStatus || "Resolved",
-        testerStatus: b.testerStatus || b.status || "Closed",
-        systemNotes: b.systemNotes || "",
-        files: b.files || [],
-        type: "bug_report",
-      })),
+    const rawCombined = [
+      ...devSentSubmissions.map((s) => {
+        const startDate = formatDateStandard(s.date_submitted || s.date);
+        const endDate = formatDateStandard(s.date_submitted || s.date);
+        return {
+          rawId: s.id,
+          module: s.projectName || s.project_name || "General",
+          title:
+            s.subject || `${s.projectName || s.project_name} Build Submission`,
+          description: `Project Link: ${s.projectLink || s.project_link || s.zipFileName || "No link"}`,
+          assignedOn: startDate,
+          dueDate: endDate,
+          testerName: s.claimedBy || s.claimed_by || "Unclaimed",
+          testerId: s.claimedById || s.claimed_by_id || "",
+          devStatus: "Sent Build",
+          testerStatus:
+            s.claimedBy || s.claimed_by
+              ? `Accepted by ${s.claimedBy || s.claimed_by}`
+              : "Sent to Testers",
+          projectLink: s.projectLink || s.project_link,
+          type: "project_build",
+        };
+      }),
+      ...devResolvedBugs.map((b) => {
+        const startDate = formatDateStandard(
+          b.assignedOn || b.assigned_on || b.created_at,
+        );
+        const endDate = formatDateStandard(
+          b.dueDate || b.due_date || b.updated_at || b.assigned_on || b.created_at,
+        );
+        return {
+          rawId: b.bugId || `BUG-${b.id}`,
+          module: b.module || "General",
+          title: b.title,
+          description: b.description,
+          assignedOn: startDate,
+          dueDate: endDate,
+          testerName: b.testerName || "Kamatchi",
+          devStatus: b.devStatus || "Resolved",
+          testerStatus: b.testerStatus || b.status || "Closed",
+          systemNotes: b.systemNotes || "",
+          files: b.files || [],
+          type: "bug_report",
+        };
+      }),
     ];
+
+    const combined = rawCombined.map((item, idx) => {
+      const projAcronym = getProjectAcronym(item.module);
+      const sequenceNum = String(idx + 1).padStart(3, "0");
+      const customBugId = `${formattedDevId}-${projAcronym}-${sequenceNum}`;
+      return {
+        ...item,
+        id: item.rawId || customBugId,
+        bugId: customBugId,
+        originalBugId: item.rawId,
+      };
+    });
 
     setHistoryLogs(combined);
   };
@@ -103,16 +133,18 @@ function DeveloperHistory({ developer }) {
 
   const filteredLogs = historyLogs.filter((log) => {
     const search = searchTerm.toLowerCase();
-    const bugId = log.bugId || `BUG-${log.id}`;
-    const title = log.title || "";
-    const project = log.module || "";
-    const tester = log.testerName || "Kamatchi";
+    const bugId = (log.bugId || "").toLowerCase();
+    const origId = (log.originalBugId || "").toLowerCase();
+    const title = (log.title || "").toLowerCase();
+    const project = (log.module || "").toLowerCase();
+    const tester = (log.testerName || "Kamatchi").toLowerCase();
 
     const matchesSearch =
-      bugId.toLowerCase().includes(search) ||
-      title.toLowerCase().includes(search) ||
-      project.toLowerCase().includes(search) ||
-      tester.toLowerCase().includes(search);
+      bugId.includes(search) ||
+      origId.includes(search) ||
+      title.includes(search) ||
+      project.includes(search) ||
+      tester.includes(search);
 
     const matchesProject =
       projectFilter === "All" || log.module === projectFilter;
@@ -125,8 +157,6 @@ function DeveloperHistory({ developer }) {
       alert("No resolved history tasks available to export.");
       return;
     }
-
-
 
     const headers = [
       "Bug ID",
@@ -144,7 +174,7 @@ function DeveloperHistory({ developer }) {
     ];
 
     const rows = filteredLogs.map((log) => [
-      escapeCSV(log.bugId || `BUG-${log.id}`),
+      escapeCSV(log.bugId),
       escapeCSV(log.module || "General"),
       escapeCSV(log.title),
       escapeCSV(log.description),
@@ -166,7 +196,6 @@ function DeveloperHistory({ developer }) {
       encodeURI("data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")),
       `Developer_Resolved_History_${new Date().toISOString().slice(0, 10)}.csv`
     );
-
   };
 
   const getTesterStatusStyle = (status) => {
@@ -278,7 +307,7 @@ function DeveloperHistory({ developer }) {
                     className="hover:bg-gray-50/70 transition-colors"
                   >
                     <td className="p-4 font-mono font-bold text-gray-900">
-                      {log.bugId || `BUG-${log.id}`}
+                      {log.bugId}
                     </td>
                     <td className="p-4">
                       <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded text-xs border border-blue-200 font-bold uppercase tracking-wider">
@@ -360,8 +389,7 @@ function DeveloperHistory({ developer }) {
                   {viewingHistory.module || "General"}
                 </span>
                 <h3 className="font-bold text-gray-900 text-sm truncate uppercase tracking-wider">
-                  {viewingHistory.bugId || `BUG-${viewingHistory.id}`} -
-                  Resolved Log
+                  {viewingHistory.bugId} - Resolved Log
                 </h3>
               </div>
               <button
@@ -426,6 +454,25 @@ function DeveloperHistory({ developer }) {
                     <strong className="text-emerald-700">
                       {viewingHistory.devStatus || "Resolved"}
                     </strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                    Start Date
+                  </h4>
+                  <p className="text-gray-900 font-mono mt-1 font-semibold">
+                    {viewingHistory.assignedOn || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                    End Date
+                  </h4>
+                  <p className="text-gray-900 font-mono mt-1 font-semibold">
+                    {viewingHistory.dueDate || "N/A"}
                   </p>
                 </div>
               </div>

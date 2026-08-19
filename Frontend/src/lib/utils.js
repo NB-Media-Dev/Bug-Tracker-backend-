@@ -6,26 +6,94 @@ export function cn(...inputs) {
 }
 
 // ---------------------------------------------------------------------------
-// Bug ID formatter
+// Bug ID formatters
 // ---------------------------------------------------------------------------
-export const formatBugId = (b) => b.bugId || b.bug_id || `BUG-${b.id}`;
+export const getProjectAcronym = (projectName) => {
+  if (!projectName?.trim()) return "PRJ";
+  const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return words.map((w) => w[0]).join("").toUpperCase();
+  }
+  const word = words[0];
+  if (word.length <= 4) return word.toUpperCase();
+  return word.slice(0, 2).toUpperCase();
+};
 
-export const generateContinuousBugId = (allExistingBugs = [], localDrafts = []) => {
-  let maxNum = 100;
-  const combined = [...(allExistingBugs || []), ...(localDrafts || [])];
-
-  combined.forEach((b) => {
-    const idStr = String(b.bug_id || b.bugId || b.id || "");
-    const match = idStr.match(/BUG-(\d+)/i);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
-      }
+export const formatBugId = (b, projectIndex = null) => {
+  if (!b) return "PRJ-001";
+  if (typeof b === "string" || typeof b === "number") {
+    const str = String(b);
+    if (!str.toUpperCase().startsWith("BUG-") && !str.toUpperCase().startsWith("BUG_") && !str.startsWith("SAVED-")) {
+      return str;
     }
+    const numStr = str.replace(/\D/g, "");
+    const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
+    return `PRJ-${seq}`;
+  }
+
+  const proj = b.module || b.project_name || b.projectName || "General";
+  const acronym = getProjectAcronym(proj);
+
+  if (projectIndex !== null && projectIndex !== undefined) {
+    const seq = String(projectIndex + 1).padStart(3, "0");
+    return `${acronym}-${seq}`;
+  }
+
+  const raw = String(b.bugId || b.bug_id || "");
+  if (raw && !raw.toUpperCase().startsWith("BUG-") && !raw.toUpperCase().startsWith("BUG_") && !raw.startsWith("SAVED-")) {
+    return raw;
+  }
+
+  const numStr = String(b.id || b.rawId || raw || "1").replace(/\D/g, "");
+  const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
+  return `${acronym}-${seq}`;
+};
+
+export const generateContinuousBugId = (allExistingBugs = [], localDrafts = [], projectName = "General") => {
+  const acronym = getProjectAcronym(projectName);
+  const targetProj = (projectName || "General").trim().toUpperCase();
+
+  const combined = [...(allExistingBugs || []), ...(localDrafts || [])];
+  const projBugs = combined.filter((b) => {
+    const p = (b.module || b.project_name || b.projectName || "General").trim().toUpperCase();
+    return p === targetProj || getProjectAcronym(p) === acronym;
   });
 
-  return `BUG-${maxNum + 1}`;
+  const count = projBugs.length;
+  const nextSeq = String(count + 1).padStart(3, "0");
+  return `${acronym}-${nextSeq}`;
+};
+
+export const formatNotificationMessage = (message, projectName = "General", bugsList = []) => {
+  if (!message) return "";
+
+  if (message.startsWith("Project:") || message.toLowerCase().includes("| status:")) {
+    const parts = message.split("|");
+    const pName = (projectName && projectName !== "General" ? projectName : parts[0].replace(/Project:/i, "").trim()).toUpperCase();
+    
+    let pct = 0;
+    if (Array.isArray(bugsList) && bugsList.length > 0) {
+      const projBugs = bugsList.filter(b => (b.module || b.project_name || "").trim().toUpperCase() === pName);
+      if (projBugs.length > 0) {
+        const closed = projBugs.filter(b => ['Closed', 'Resolved'].includes((b.status || b.testerStatus || '').toString())).length;
+        pct = Math.round((closed / projBugs.length) * 100);
+      } else {
+        pct = 100;
+      }
+    } else {
+      pct = message.toLowerCase().includes("completed") ? 100 : 0;
+    }
+    return `${pName} progress is ${pct}%`;
+  }
+
+  return message.replace(/(\[?BUG-(\d+)\]?)/gi, (match, fullMatch, num) => {
+    const formatted = formatBugId({ id: num, module: projectName });
+    if (match.startsWith("[")) {
+      return `[${formatted}]`;
+    }
+    return formatted;
+  });
 };
 
 export const normalizeFiles = (filesInput) => {

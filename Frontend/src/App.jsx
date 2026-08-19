@@ -16,8 +16,9 @@ import NotificationPopupAlerts from "./components/NotificationPopupAlerts";
 import { clearDumpStorage } from "./lib/clearDumpStorage";
 import { getSavedTheme, applyTheme } from "./lib/theme";
 import { API_BASE, authFetch } from "./lib/api";
+import { formatNotificationMessage } from "./lib/utils";
 import { getStoredAuth, clearAuthStorage, getRequirePasswordChange } from "./lib/auth";
-import { Calendar } from "lucide-react";
+import { Calendar, ShieldCheck, CheckCheck, Activity, Building2, AlertTriangle, Clock, Inbox } from "lucide-react";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,15 +50,20 @@ function App() {
         ? `${API_BASE}/api/bugs/notifications/?role=CTO`
         : `${API_BASE}/api/bugs/notifications/?role=Admin`;
 
-      const notifsRes = await authFetch(url);
+      const [notifsRes, bugsRes] = await Promise.all([
+        authFetch(url),
+        authFetch(`${API_BASE}/api/bugs/`)
+      ]);
       const data = notifsRes.ok ? await notifsRes.json() : [];
+      const bugsData = bugsRes.ok ? await bugsRes.json() : [];
       const notifList = Array.isArray(data) ? data : data.results || [];
 
       let combined = notifList.map(n => {
         const rawTime = n.created_at || n.timestamp || new Date().toISOString();
+        const formattedMsg = formatNotificationMessage(n.message, n.project_name || "General", bugsData);
         return {
           id: String(n.id),
-          message: n.message,
+          message: formattedMsg,
           project_name: n.project_name,
           rawTimestamp: rawTime,
           timestamp: rawTime
@@ -72,9 +78,41 @@ function App() {
           n.message && (
             n.message.startsWith("Project:") ||
             n.message.startsWith("Project ") ||
+            n.message.toLowerCase().includes("progress is") ||
             n.type === "project_status_updated"
           )
         );
+
+        if (combined.length === 0) {
+          try {
+            const subsRes = await authFetch(`${API_BASE}/api/bugs/submissions/`);
+            if (subsRes.ok) {
+              const subsData = await subsRes.json();
+              const subList = Array.isArray(subsData) ? subsData : [];
+              combined = subList
+                .filter(s => !s.id.startsWith("FIX-"))
+                .map((s, idx) => {
+                  const projName = (s.project_name || s.project || "General").trim().toUpperCase();
+                  const projBugs = bugsData.filter(b => (b.module || "").trim().toUpperCase() === projName);
+                  const closed = projBugs.filter(b => ['Closed', 'Resolved'].includes((b.status || b.testerStatus || '').toString())).length;
+                  const pct = projBugs.length > 0 ? Math.round((closed / projBugs.length) * 100) : 100;
+                  const rawTime = s.date_submitted || new Date().toISOString();
+                  return {
+                    id: `SUB-NOTIF-${s.id || idx}`,
+                    message: `${projName} progress is ${pct}%`,
+                    project_name: projName,
+                    rawTimestamp: rawTime,
+                    timestamp: rawTime
+                      ? new Date(rawTime).toLocaleDateString("en-US", { day: "numeric", month: "short" })
+                      : "Just now",
+                    type: "project_status_updated"
+                  };
+                });
+            }
+          } catch (err) {
+            console.error("Error building fallback CTO notifications", err);
+          }
+        }
       }
 
       combined.sort((a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp));
@@ -253,17 +291,23 @@ function App() {
 
   const matchesNotifDate = (n) => {
     if (!notifDateFilter) return true;
-    const timestamp = n.rawTimestamp || n.timestamp;
-    if (!timestamp) return false;
-    const d = new Date(timestamp);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === notifDateFilter;
+    const rawDate = n.created_at || n.date_submitted || n.rawTimestamp || n.timestamp || n.date;
+    if (!rawDate) return false;
+    const d = new Date(rawDate);
+    if (!Number.isNaN(d.getTime())) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}` === notifDateFilter;
+    }
+    return false;
   };
 
   const filteredAdminNotifications = adminNotifications.filter(matchesNotifDate);
   const adminEmail = authUser?.company_email || authUser?.personal_email || authUser?.email || "";
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)] antialiased overflow-hidden">
+    <div className="flex h-screen bg-[var(--color-background)] text-[var(--color-foreground)] antialiased overflow-hidden">
       {isCTO && <NotificationPopupAlerts role="cto" user={authUser} />}
       <Sidebar
         open={sidebarOpen}
@@ -277,8 +321,8 @@ function App() {
         userRole={isCTO ? "cto" : "admin"}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-300 overflow-hidden">
-        <header className="flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 border-b bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
+      <div className="flex-1 flex flex-col min-w-0 h-screen transition-all duration-300 overflow-hidden">
+        <header className="flex items-center justify-between px-3 sm:px-6 h-14 sm:h-16 border-b bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm shrink-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               className="flex-shrink-0 p-2 rounded-lg md:hidden text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
@@ -329,42 +373,129 @@ function App() {
             )}
 
             {isCTO && showNotifDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 z-50 overflow-hidden text-left">
-                <div className="p-3 bg-amber-50 dark:bg-slate-800 border-b border-amber-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-bold text-xs text-amber-900 dark:text-amber-200 uppercase tracking-wider">System</span>
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-gray-200 dark:border-slate-800 z-50 overflow-hidden text-left">
+                <div className="p-3 bg-gray-50 dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={notifDateFilter}
-                      onChange={(e) => setNotifDateFilter(e.target.value)}
-                      className="px-2 py-1 text-[10px] font-medium border border-amber-200 rounded-lg bg-white text-gray-800 focus:outline-none outline-none focus:ring-1 focus:ring-amber-400 dark:bg-slate-800 dark:text-white dark:border-slate-700"
-                      title="Filter notifications by date"
-                    />
+                    <span className="font-bold text-xs text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <Clock size={14} className="text-blue-600" />
+                       Notifications
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex items-center">
+                      <input
+                        type="date"
+                        value={notifDateFilter}
+                        onChange={(e) => setNotifDateFilter(e.target.value)}
+                        className="px-2 py-0.5 text-[11px] border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        title="Filter notifications by date"
+                      />
+                      {notifDateFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setNotifDateFilter("")}
+                          className="ml-1 text-[10px] text-slate-400 hover:text-slate-600 font-bold"
+                          title="Reset date filter"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                     <button
+                      type="button"
                       onClick={() => {
+                        const storageKey = isCTO ? "cto_read_notifications" : "admin_read_notifications";
+                        const popupDismissKey = isCTO ? "cto_dismissed_popups" : "admin_dismissed_popups";
                         const allIds = adminNotifications.map(n => String(n.id));
-                        const existingCleared = JSON.parse(localStorage.getItem("admin_read_notifications") || "[]");
-                        localStorage.setItem("admin_read_notifications", JSON.stringify(Array.from(new Set([...existingCleared, ...allIds]))));
+
+                        const existingCleared = JSON.parse(localStorage.getItem(storageKey) || "[]");
+                        const updatedCleared = Array.from(new Set([...existingCleared, ...allIds]));
+                        localStorage.setItem(storageKey, JSON.stringify(updatedCleared));
+
+                        const existingPopupDismissed = JSON.parse(localStorage.getItem(popupDismissKey) || "[]");
+                        const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed, ...allIds]));
+                        localStorage.setItem(popupDismissKey, JSON.stringify(updatedPopupDismissed));
+
+                        allIds.forEach((id) => {
+                          authFetch(`${API_BASE}/api/bugs/notifications/${id}/`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ is_read: true }),
+                          }).catch(() => {});
+                        });
+
+                        setNotifDateFilter("");
                         setAdminNotifications([]);
                         window.dispatchEvent(new Event("notifications_updated"));
                       }}
-                      className="text-[10px] text-amber-700 dark:text-amber-300 hover:underline font-semibold cursor-pointer"
+                      className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 font-semibold cursor-pointer"
+                      title="Clear all notifications"
                     >
-                      Clear
+                      <CheckCheck size={12} /> Clear
                     </button>
                   </div>
                 </div>
 
-                <div className="max-h-72 overflow-y-auto overflow-x-hidden divide-y divide-gray-100 dark:divide-slate-800 text-xs">
+                {/* Body List */}
+                <div className="max-h-84 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800 text-xs">
                   {filteredAdminNotifications.length > 0 ? (
-                    filteredAdminNotifications.map(n => (
-                      <div key={n.id} className="p-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors break-words break-all">
-                        <p className="font-bold text-gray-900 dark:text-gray-100 break-words break-all leading-snug">{n.message}</p>
-                        <span className="text-[10px] text-gray-400 font-mono mt-1 block">{n.timestamp}</span>
-                      </div>
-                    ))
+                    filteredAdminNotifications.map((n) => {
+                      const msgLower = (n.message || "").toLowerCase();
+                      const isProject = msgLower.includes("project") || msgLower.includes("build") || msgLower.includes("submitted");
+
+                      return (
+                        <div
+                          key={n.id}
+                          className="p-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer flex items-start gap-3"
+                        >
+                          <div
+                            className={`p-2 rounded-lg shrink-0 mt-0.5 ${
+                              isProject
+                                ? "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400"
+                                : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-300"
+                            }`}
+                          >
+                            {isProject ? <Building2 size={15} /> : <Activity size={15} />}
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                {isProject ? "PROJECT BUILD" : "SYSTEM"}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                {n.timestamp || "Just now"}
+                              </span>
+                            </div>
+
+                            <p className="font-medium text-gray-800 dark:text-gray-200 leading-snug break-words">
+                              {formatNotificationMessage(n.message, n.project_name || "General")}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
                   ) : (
-                    <p className="p-6 text-center text-gray-400 italic text-xs">No matching system logs.</p>
+                    <div className="p-8 text-center space-y-1">
+                      <Inbox size={22} className="text-gray-400 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        {notifDateFilter ? "No notifications for this date" : "No Notifications"}
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        {notifDateFilter ? (
+                          <button
+                            type="button"
+                            onClick={() => setNotifDateFilter("")}
+                            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer"
+                          >
+                            Clear date filter
+                          </button>
+                        ) : (
+                          "All notifications are caught up."
+                        )}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -372,7 +503,7 @@ function App() {
           </div>
         </header>
 
-        <main className="p-3 sm:p-6 flex-1 overflow-x-hidden overflow-y-auto bg-[oklch(0.98_0.005_30)] dark:bg-[oklch(0.12_0.005_30)] min-w-0">
+        <main className="p-3 sm:p-6 flex-1 min-h-0 overflow-x-hidden overflow-y-auto bg-[oklch(0.98_0.005_30)] dark:bg-[oklch(0.12_0.005_30)] min-w-0">
           {renderPage()}
         </main>
       </div>

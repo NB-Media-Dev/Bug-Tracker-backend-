@@ -9,6 +9,21 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss()
     ],
+    build: {
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('lucide-react')) return 'vendor-icons';
+              if (id.includes('@mui')) return 'vendor-mui';
+              if (id.includes('react')) return 'vendor-react';
+              return 'vendor';
+            }
+          }
+        }
+      }
+    },
     server: {
       host: true,
       port: 5173,

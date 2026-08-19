@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { API_BASE, authFetch } from "../lib/api";
+import { formatBugId, formatNotificationMessage } from "../lib/utils";
 
 export default function NotificationPopupAlerts({ role, user, onNotificationClick }) {
   const [activeAlerts, setActiveAlerts] = useState([]);
@@ -206,7 +207,23 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
     <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-3 max-w-sm w-full px-2 sm:px-0 pointer-events-none font-sans">
       {activeAlerts.map((alert) => {
         const config = getAlertStyle(alert);
-        const bugId = alert.bug_id || alert.bug_report?.bug_id || "";
+        const projName = alert.project_name || alert.module || alert.bug_report?.module || "General";
+        const msgMatch = alert.message ? alert.message.match(/\[([A-Z0-9]+-\d+)\]/i) || alert.message.match(/([A-Z0-9]+-\d+)/i) : null;
+        const rawBugId = msgMatch ? msgMatch[1] : (alert.bug_id || alert.bug_report?.bug_id || alert.id || "");
+        
+        let bugId = "";
+        if (rawBugId && typeof rawBugId === "string" && rawBugId.includes("-") && !rawBugId.toUpperCase().startsWith("BUG-")) {
+          bugId = rawBugId.toUpperCase();
+        } else if (rawBugId) {
+          bugId = formatBugId(
+            {
+              bugId: rawBugId,
+              module: projName,
+              id: rawBugId,
+            },
+            0
+          );
+        }
 
         return (
           <div
@@ -245,7 +262,7 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
 
               {/* Message */}
               <p className="text-xs text-slate-600 dark:text-slate-300 font-normal leading-snug mb-3">
-                {alert.message}
+                {formatNotificationMessage(alert.message, alert.project_name || alert.module || alert.bug_report?.module || "General")}
               </p>
 
               {/* Footer / Meta */}

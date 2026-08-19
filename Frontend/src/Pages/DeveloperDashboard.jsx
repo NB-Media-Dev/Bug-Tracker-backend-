@@ -7,6 +7,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import DeveloperReminderModal from "../components/DeveloperReminderModal";
 import { getSavedTheme, applyTheme } from "../lib/theme";
 import { API_BASE } from "../lib/api";
+import { formatBugId, formatNotificationMessage } from "../lib/utils";
 
 import {
   UserCheck,
@@ -380,30 +381,44 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
       const response = await fetch(`${API_BASE}/api/bugs/`);
       if (response.ok) {
         const data = await response.json();
-        const mapped = Array.isArray(data)
-          ? data.map((b) => ({
-            id: b.bugId || b.bug_id || `BUG-${b.id}`,
-            rawId: b.id,
-            title: b.title,
-            description: b.description,
-            module: b.module || "General",
-            severity: b.severity || "Minor",
-            bugType: b.bugType || b.bug_type || "Functional",
-            status: b.status || "Open",
-            testerStatus: b.status || "Open",
-            devStatus: b.devStatus || b.dev_status || "In Progress",
-            developer: b.developerName || b.developer_name || "Unassigned",
-            developerId: b.developerId || "N/A",
-            testerName: b.testerName || b.tester_name || "Tester",
-            Assgined_Date:
-              b.assignedOn ||
-              b.assigned_on ||
-              new Date().toLocaleDateString(),
-            endDate: b.dueDate || b.due_date || "N/A",
-            stepsText: b.stepsText || b.steps_text || "",
-            files: b.files || [],
-          }))
-          : [];
+        const list = Array.isArray(data) ? data : [];
+        const projectGroups = {};
+        list.forEach((b) => {
+          const mod = (b.module || "General").trim().toUpperCase();
+          if (!projectGroups[mod]) projectGroups[mod] = [];
+          projectGroups[mod].push(b);
+        });
+
+        const mapped = [];
+        Object.entries(projectGroups).forEach(([mod, items]) => {
+          items.sort((a, b) => (a.id || 0) - (b.id || 0));
+          items.forEach((b, idx) => {
+            const seqId = formatBugId(b, idx);
+            mapped.push({
+              id: seqId,
+              bugId: seqId,
+              rawId: b.id,
+              title: b.title,
+              description: b.description,
+              module: b.module || "General",
+              severity: b.severity || "Minor",
+              bugType: b.bugType || b.bug_type || "Functional",
+              status: b.status || "Open",
+              testerStatus: b.status || "Open",
+              devStatus: b.devStatus || b.dev_status || "In Progress",
+              developer: b.developerName || b.developer_name || "Unassigned",
+              developerId: b.developerId || "N/A",
+              testerName: b.testerName || b.tester_name || "Tester",
+              Assgined_Date:
+                b.assignedOn ||
+                b.assigned_on ||
+                new Date().toLocaleDateString(),
+              endDate: b.dueDate || b.due_date || "N/A",
+              stepsText: b.stepsText || b.steps_text || "",
+              files: b.files || [],
+            });
+          });
+        });
         setBugs(mapped);
         return;
       }
@@ -433,14 +448,16 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
 
   const matchesNotifDate = (n) => {
     if (!notifDateFilter) return true;
-    const timestamp = n.rawTimestamp || n.timestamp;
-    if (!timestamp) return false;
-    const d = new Date(timestamp);
-    if (Number.isNaN(d.getTime())) return false;
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}` === notifDateFilter;
+    const rawDate = n.created_at || n.date_submitted || n.rawTimestamp || n.timestamp || n.date;
+    if (!rawDate) return false;
+    const d = new Date(rawDate);
+    if (!Number.isNaN(d.getTime())) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}` === notifDateFilter;
+    }
+    return false;
   };
 
   const filteredNotifications = notifications.filter(matchesNotifDate);
@@ -533,26 +550,25 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   const recentActivities = currentRecentActivities;
 
   return (
-    <div>
+    <div className="flex h-screen w-screen bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden">
       <NotificationPopupAlerts
         role="developer"
         user={developer}
         onNotificationClick={() => setCurrentPath("/developer/myreport")}
       />
-      <div className="flex h-screen bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden">
-        <DeveloperSidebar
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
-          currentPath={currentPath}
-          onNavigate={handleNavigate}
-          onLogout={onLogout}
-          developer={developer}
-        />
+      <DeveloperSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={setIsCollapsed}
+        currentPath={currentPath}
+        onNavigate={handleNavigate}
+        onLogout={onLogout}
+        developer={developer}
+      />
 
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <header className="bg-white border-b border-gray-200 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 shadow-sm">
+      <div className="flex-1 flex flex-col min-w-0 h-full min-h-0 overflow-hidden">
+        <header className="bg-white border-b border-gray-200 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 sticky top-0 z-30 shadow-sm shrink-0">
             {/* Left: hamburger + label */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
@@ -630,9 +646,22 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                           type="button"
                           onClick={() => {
                             const allIds = filteredNotifications
-                              .map((n) => n.id)
+                              .map((n) => String(n.id))
                               .filter(Boolean);
                             setReadNotifIds((prev) => Array.from(new Set([...prev, ...allIds])));
+
+                            const existingPopupDismissed = JSON.parse(localStorage.getItem("developer_dismissed_popups") || "[]");
+                            const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed, ...allIds]));
+                            localStorage.setItem("developer_dismissed_popups", JSON.stringify(updatedPopupDismissed));
+
+                            allIds.forEach((id) => {
+                              authFetch(`${API_BASE}/api/bugs/notifications/${id}/`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ is_read: true }),
+                              }).catch(() => {});
+                            });
+                            window.dispatchEvent(new Event("notifications_updated"));
                           }}
                           className="inline-flex items-center gap-1 text-[10px] text-blue-700 dark:text-blue-300 hover:text-blue-900 font-bold bg-white/80 dark:bg-slate-800 px-2 py-1 rounded-lg border border-blue-200 dark:border-slate-700 shadow-2xs transition-all cursor-pointer"
                           title="Mark all as read"
@@ -658,8 +687,8 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                                 handleNavigate("/developer/myreport");
                               }}
                               className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 relative group ${unread
-                                  ? "bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50/80"
-                                  : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50 opacity-90 hover:opacity-100"
+                                ? "bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50/80"
+                                : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50 opacity-90 hover:opacity-100"
                                 }`}
                             >
                               {/* Unread indicator dot */}
@@ -683,7 +712,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                                   </span>
                                 </div>
                                 <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                  {n.message}
+                                  {formatNotificationMessage(n.message, n.project_name || n.module || "General")}
                                 </p>
                               </div>
                             </div>
@@ -717,7 +746,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
             </div>
           </header>
 
-          <main className="flex-1 p-3 sm:p-6 overflow-x-hidden overflow-y-auto min-w-0">
+          <main className="flex-1 min-h-0 p-3 sm:p-6 overflow-x-hidden overflow-y-auto min-w-0">
             <DeveloperReminderModal
               dueBugs={dueBugsList}
               onViewBug={() => {
@@ -1032,7 +1061,6 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
               </div>)};
           </main>
         </div>
-      </div>
     </div>
   );
 }

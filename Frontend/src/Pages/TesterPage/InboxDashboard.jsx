@@ -154,7 +154,7 @@ function InboxDashboard({ onNavigate }) {
             <Inbox size={20} />
           </div>
           <div>
-            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Builds</span>
+            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Total </span>
             <span className="text-lg font-bold text-gray-900">{messages.length}</span>
           </div>
         </div>
@@ -164,7 +164,7 @@ function InboxDashboard({ onNavigate }) {
             <AlertCircle size={20} />
           </div>
           <div>
-            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Unread Builds</span>
+            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Unread </span>
             <span className="text-lg font-bold text-gray-900">
               {messages.filter(m => m.status === 'Unread').length}
             </span>
@@ -176,7 +176,7 @@ function InboxDashboard({ onNavigate }) {
             <CheckCircle size={20} />
           </div>
           <div>
-            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Downloaded Builds</span>
+            <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Downloaded Files</span>
             <span className="text-lg font-bold text-gray-900">
               {messages.filter(m => m.downloaded).length}
             </span>

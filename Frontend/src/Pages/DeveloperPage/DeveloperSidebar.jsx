@@ -8,7 +8,6 @@ function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = fal
     { name: "Send Project", href: "/developer/sendproject", icon: FileArchive },
     { name: "My Report", href: "/developer/myreport", icon: Bug },
     { name: "History", href: "/developer/history", icon: History },
-    // { name: "Help and support", href: "/developer/help", icon: HelpCircle }
   ];
 
   const devName = developer?.name || "Developer";

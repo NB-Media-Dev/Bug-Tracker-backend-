@@ -1,9 +1,21 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { History, Eye, FileText, Clock, RefreshCw, FileSpreadsheet, CheckCircle2Icon } from 'lucide-react';
 import { API_BASE } from '../../lib/api';
 import { normalizeBug, getTesterInfo, matchesTester, downloadFile, getStatusBadgeStyle } from '../../lib/utils';
 import StatusFilterSelect from '../../components/shared/StatusFilterSelect';
 import BugDetailModal from '../../components/shared/BugDetailModal';
+
+const getProjectAcronym = (projectName) => {
+  if (!projectName?.trim()) return "PRJ";
+  const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return words.map((w) => w[0]).join("").toUpperCase();
+  }
+  const word = words[0];
+  if (word.length <= 4) return word.toUpperCase();
+  return word.slice(0, 2).toUpperCase();
+};
 
 function HistoryReport() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,7 +39,22 @@ function HistoryReport() {
 
       const data = await response.json();
       const filteredData = data.filter(b => matchesTester(b, testerName, testerEmail, testerId));
-      const mapped = filteredData.map(b => normalizeBug(b, { testerName, testerId, testerEmail }));
+      
+      const projectBugCounts = {};
+      const mapped = filteredData.map(b => {
+        const norm = normalizeBug(b, { testerName, testerId, testerEmail });
+        const projName = norm.module || "General";
+        const acronym = getProjectAcronym(projName);
+        projectBugCounts[acronym] = (projectBugCounts[acronym] || 0) + 1;
+        const sequenceNum = String(projectBugCounts[acronym]).padStart(3, "0");
+        const customBugId = `${acronym}-${sequenceNum}`;
+        return {
+          ...norm,
+          bugId: customBugId,
+          id: customBugId,
+          originalBugId: norm.bugId || norm.id,
+        };
+      });
       setHistoryLogs(mapped);
     } catch (e) {
       console.error("Error loading history logs from API", e);
@@ -98,7 +125,7 @@ function HistoryReport() {
 
   const bugTitle = viewingHistory? `${viewingHistory.bugId || 'BUG-' + viewingHistory.id} - History Detail`: '';  
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen font-sans text-gray-800 antialiased">
+    <div className="max-w-7xl mx-auto p-6 bg-gray-50 font-sans text-gray-800 antialiased">
 
     
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -107,7 +134,7 @@ function HistoryReport() {
             <History className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900">History Report</h1>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">Comprehensive audit trail & historical logs of all submitted bug reports.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Comprehensive audit trail & historical bugs of all submitted bug reports.</p>
         </div>
 
         <button
@@ -122,7 +149,7 @@ function HistoryReport() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Total Reports Logged</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Total Reports Bugs</span>
             <span className="text-2xl font-bold text-gray-900 mt-1 block">{totalCount}</span>
           </div>
           <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
@@ -132,7 +159,7 @@ function HistoryReport() {
 
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Active Open Logs</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Active Bugs</span>
             <span className="text-2xl font-bold text-blue-600 mt-1 block">{openCount}</span>
           </div>
           <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
@@ -212,7 +239,7 @@ function HistoryReport() {
                 <th className="p-4 w-28">Bug ID</th>
                 <th className="p-4">Project Name</th>
                 <th className="p-4">Tester Name</th>
-                <th className="p-4">Developer Assigned</th>
+                <th className="p-4">Assigned Developer</th>
                 <th className="p-4 w-32">Start Date</th>
                 <th className="p-4 w-32">End Date</th>
                 <th className="p-4 w-36">Status</th>
@@ -252,7 +279,7 @@ function HistoryReport() {
                         onClick={() => setViewingHistory(log)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-xs transition-colors cursor-pointer"
                       >
-                        <Eye size={13} /> View Log
+                        <Eye size={13} /> View 
                       </button>
                     </td>
                   </tr>

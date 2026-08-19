@@ -14,7 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { API_BASE } from "../../lib/api";
-import { normalizeBug } from "../../lib/utils";
+import { normalizeBug, formatBugId } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function DeveloperMyReport({ developer }) {
@@ -449,26 +449,29 @@ console.log(viewingBug);
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-xs text-gray-700">
-                      {projBugs.map((bug) => (
-                        <tr
-                          key={bug.id}
-                          onClick={(e) => {
-                            if (
-                              e.target.tagName !== "SELECT" &&
-                              e.target.tagName !== "OPTION"
-                            ) {
-                              handleOpenDetails(bug);
-                            }
-                          }}
-                          className={`cursor-pointer transition-all duration-300 ${
-                            bug.testerEdited
-                              ? "bg-amber-50/80 hover:bg-amber-100/95 shadow-[0_0_12px_rgba(245,158,11,0.45)] border-l-4 border-l-amber-500 font-medium"
-                              : "hover:bg-blue-50/30"
-                          }`}
-                        >
-                          <td className="p-4 font-mono font-bold text-gray-900">
-                            {bug.id}
-                          </td>
+                      {projBugs.map((bug, index) => {
+                        const seqIndex = projBugs.length - 1 - index;
+                        const displayId = formatBugId(bug, seqIndex >= 0 ? seqIndex : index);
+                        return (
+                          <tr
+                            key={bug.id}
+                            onClick={(e) => {
+                              if (
+                                e.target.tagName !== "SELECT" &&
+                                e.target.tagName !== "OPTION"
+                              ) {
+                                handleOpenDetails(bug);
+                              }
+                            }}
+                            className={`cursor-pointer transition-all duration-300 ${
+                              bug.testerEdited
+                                ? "bg-amber-50/80 hover:bg-amber-100/95 shadow-[0_0_12px_rgba(245,158,11,0.45)] border-l-4 border-l-amber-500 font-medium"
+                                : "hover:bg-blue-50/30"
+                            }`}
+                          >
+                            <td className="p-4 font-mono font-bold text-gray-900">
+                              {displayId}
+                            </td>
                           <td className="p-4 max-w-xs sm:max-w-md whitespace-pre-wrap break-words break-all leading-relaxed text-gray-700">
                             <div className="font-bold text-gray-900 mb-1 break-words break-all leading-snug">
                               {bug.title}
@@ -528,7 +531,8 @@ console.log(viewingBug);
                             </button>
                           </td>
                         </tr>
-                      ))}
+                      );
+                    })}
                     </tbody>
                   </table>
                 </div>

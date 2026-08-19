@@ -86,15 +86,8 @@ class BugReportSerializer(serializers.ModelSerializer):
         match = re.search(r'\((DEV\d+|EMP\d+)\)', obj.developer_name, re.IGNORECASE)
         if match:
             return match.group(1).upper()
-        
-        name_clean = obj.developer_name.split('(')[0].strip()
-        try:
-            emp = Employee.objects.filter(name__icontains=name_clean, role='Developer').first()
-            if emp:
-                return emp.employee_id or f"DEV{emp.id:03d}"
-        except Exception:
-            pass
         return 'DEV001'
+
     def get_testerId(self, obj):
         if obj.tester_id and obj.tester_id != 'N/A':
             return obj.tester_id
@@ -103,13 +96,6 @@ class BugReportSerializer(serializers.ModelSerializer):
         match = re.search(r'\((TS\d+|TST\d+)\)', obj.tester_name, re.IGNORECASE)
         if match:
             return match.group(1).upper()
-        name_clean = obj.tester_name.split('(')[0].strip()
-        try:
-            emp = Employee.objects.filter(name__icontains=name_clean, role='Tester').first()
-            if emp:
-                return emp.employee_id or f"TS{emp.id:03d}"
-        except Exception:
-            pass
         return 'TS001'
 class NotificationSerializer(serializers.ModelSerializer):
     bugReportId = serializers.IntegerField(source='bug_report_id', required=False, allow_null=True)

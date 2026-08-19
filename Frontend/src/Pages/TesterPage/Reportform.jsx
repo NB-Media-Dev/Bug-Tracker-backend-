@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { getProjectPrefix } from "../../lib/theme";
 import { API_BASE } from "../../lib/api";
-import { formatDateStandard, generateContinuousBugId } from "../../lib/utils";
+import { formatDateStandard, generateContinuousBugId, formatBugId } from "../../lib/utils";
 
 function Reportform({ onNavigate }) {
   const [developerList, setDeveloperList] = useState([]);
@@ -66,7 +66,7 @@ function Reportform({ onNavigate }) {
         project_name: normalizedModule,
         projectName: normalizedModule,
         id: Date.now(),
-        bugId: generateContinuousBugId(allBugs, submittedBugs),
+        bugId: generateContinuousBugId(allBugs, submittedBugs, normalizedModule),
         testerName: testerName || "Tester",
         testerId: testerId || "TS001",
         testerEmail,
@@ -570,7 +570,7 @@ function Reportform({ onNavigate }) {
     ];
 
     const rows = submittedBugs.map((bug, index) => [
-      escapeCSV(bug.bugId || `BUG-${100 + (submittedBugs.length - index)}`),
+      escapeCSV(formatBugId(bug)),
       escapeCSV(bug.title),
       escapeCSV(bug.description),
       escapeCSV(bug.severity),
@@ -1175,6 +1175,10 @@ function Reportform({ onNavigate }) {
       return;
     }
 
+    const normalizedModule = (formData.module || "General")
+      .trim()
+      .toUpperCase();
+
     let existingBugs = [];
     try {
       const res = await fetch(`${API_BASE}/api/bugs/`);
@@ -1183,16 +1187,13 @@ function Reportform({ onNavigate }) {
       console.error("Error loading existing bugs for ID calculation", err);
     }
 
-    const nextBugId = generateContinuousBugId(existingBugs, submittedBugs);
+    const nextBugId = generateContinuousBugId(existingBugs, submittedBugs, normalizedModule);
 
     const {
       name: testerName,
       id: testerId,
       email: testerEmail,
     } = getTesterInfo();
-    const normalizedModule = (formData.module || "General")
-      .trim()
-      .toUpperCase();
 
     const newBug = {
       ...formData,
@@ -1257,11 +1258,8 @@ function Reportform({ onNavigate }) {
                 </span>
               )}
               <h1 className="text-2xl font-bold text-gray-900">
-                Report New Bug
+                Report New Bugs
               </h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Help us improve by reporting the issue you found.
-              </p>
             </div>
           )}
         </div>
@@ -1745,8 +1743,7 @@ function Reportform({ onNavigate }) {
                     className="hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="p-3 font-mono font-bold text-gray-500 whitespace-nowrap">
-                      {bug.bugId ||
-                        `BUG-${100 + (submittedBugs.length - index)}`}
+                      {formatBugId(bug)}
                     </td>
                     <td className="p-3 font-semibold text-blue-600 bg-blue-50/30">
                       <span className="text-[10px] bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">
@@ -1912,9 +1909,9 @@ function Reportform({ onNavigate }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                    {projectBugs.map((bug) => {
-                      const bugIdStr =
-                        bug.bugId || bug.bug_id || `BUG-${bug.id}`;
+                    {projectBugs.map((bug, index) => {
+                      const seqIndex = projectBugs.length - 1 - index;
+                      const bugIdStr = formatBugId(bug, seqIndex >= 0 ? seqIndex : index);
                       return (
                         <tr
                           key={bug.id}

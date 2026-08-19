@@ -609,7 +609,33 @@ function Mybugreport({ onNavigate }) {
     originalData: sb,
   }));
 
-  const allCombinedBugs = [...bugs, ...normalizedSavedBugs];
+  const getProjectAcronym = (projectName) => {
+    if (!projectName?.trim()) return "PRJ";
+    const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+      return words.map((w) => w[0]).join("").toUpperCase();
+    }
+    const word = words[0];
+    if (word.length <= 4) return word.toUpperCase();
+    return word.slice(0, 2).toUpperCase();
+  };
+
+  const projectBugCounts = {};
+  const rawCombinedBugs = [...bugs, ...normalizedSavedBugs];
+  const allCombinedBugs = rawCombinedBugs.map((bug) => {
+    const projName = bug.module || "General";
+    const acronym = getProjectAcronym(projName);
+    projectBugCounts[acronym] = (projectBugCounts[acronym] || 0) + 1;
+    const sequenceNum = String(projectBugCounts[acronym]).padStart(3, "0");
+    const customBugId = `${acronym}-${sequenceNum}`;
+    return {
+      ...bug,
+      id: customBugId,
+      bugId: customBugId,
+      originalBugId: bug.id || bug.bugId,
+    };
+  });
 
   const developersList = [
     "All",

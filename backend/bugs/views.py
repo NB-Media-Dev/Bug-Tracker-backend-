@@ -15,11 +15,11 @@ from django.db import transaction, DatabaseError
 logger = logging.getLogger(__name__)
 
 def get_next_bug_id():
-    bugs = BugReport.objects.all()
+    bug_ids = BugReport.objects.exclude(bug_id__isnull=True).values_list('bug_id', flat=True)
     max_num = 100
-    for bug in bugs:
-        if bug.bug_id:
-            match = re.search(r'BUG-(\d+)', str(bug.bug_id), re.IGNORECASE)
+    for b_id in bug_ids:
+        if b_id:
+            match = re.search(r'BUG-(\d+)', str(b_id), re.IGNORECASE)
             if match:
                 try:
                     val = int(match.group(1))
@@ -115,17 +115,40 @@ class BugReportListCreateView(APIView):
         )
         data['status'] = data['testerStatus'] = data['devStatus'] = data['dev_status'] = status_val
 
+    def _get_project_acronym(self, project_name):
+        if not project_name or not project_name.strip():
+            return "PRJ"
+        clean = "".join([c for c in project_name if c.isalnum() or c.isspace()]).strip()
+        words = [w for w in clean.split() if w]
+        if not words:
+            return "PRJ"
+        if len(words) > 1:
+            return "".join([w[0] for w in words]).upper()
+        word = words[0]
+        if len(word) <= 4:
+            return word.upper()
+        return word[:2].upper()
+
     def _send_creation_notifications(self, bug, dev_id):
-        bug_id = bug.bug_id
+        proj_name = bug.module or 'General'
+        acronym = self._get_project_acronym(proj_name)
+        proj_count = BugReport.objects.filter(module__iexact=proj_name).count()
+        seq = f"{max(proj_count, 1):03d}"
+        
+        if bug.bug_id and not bug.bug_id.startswith("BUG-") and not bug.bug_id.startswith("BUG_"):
+            formatted_bug_id = bug.bug_id
+        else:
+            formatted_bug_id = f"{acronym}-{seq}"
+
         title = bug.title
         tester_name = bug.tester_name or 'Tester'
         tester_email = bug.tester_email or ''
         tester_emp_id = bug.tester_id or 'TS001'
         dev_emp_id = bug.developer_id or dev_id or 'DEV001'
 
-        self._create_tester_notification(bug, bug_id, title, tester_name, tester_email, tester_emp_id, dev_emp_id)
-        self._create_admin_notification(bug, bug_id, title, tester_name, tester_emp_id)
-        self._create_developer_notification(bug, bug_id, title, tester_name, tester_emp_id, dev_emp_id)
+        self._create_tester_notification(bug, formatted_bug_id, title, tester_name, tester_email, tester_emp_id, dev_emp_id)
+        self._create_admin_notification(bug, formatted_bug_id, title, tester_name, tester_emp_id)
+        self._create_developer_notification(bug, formatted_bug_id, title, tester_name, tester_emp_id, dev_emp_id)
         self._create_cto_project_notification(bug)
 
     def _create_cto_project_notification(self, bug):
@@ -133,12 +156,8 @@ class BugReportListCreateView(APIView):
             proj_name = (bug.module or 'General').strip().upper()
             project_bugs = BugReport.objects.filter(module__iexact=proj_name)
             total_count = project_bugs.count()
-            closed_count = project_bugs.filter(status__iexact='Closed').count()
-            
-            if total_count > 0 and closed_count == total_count:
-                status_str = "Completed"
-            else:
-                status_str = "In Progress"
+            closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
+            pct = int((closed_count / total_count) * 100) if total_count > 0 else 100
 
             Notification.objects.create(
                 recipient_email='cto@company.com',
@@ -146,7 +165,7 @@ class BugReportListCreateView(APIView):
                 recipient_role='CTO',
                 recipient_id='CTO001',
                 notification_type='project_status_updated',
-                message=f'Project: {proj_name} | Status: {status_str}',
+                message=f'{proj_name} progress is {pct}%',
                 bug_report=bug,
                 project_name=proj_name
             )
@@ -165,7 +184,8 @@ class BugReportListCreateView(APIView):
             recipient_id=tester_emp_id,
             notification_type='bug_created',
             message=f'Your bug report {bug_id} "{title}" was submitted and assigned to {assigned_to}.',
-            bug_report=bug
+            bug_report=bug,
+            project_name=bug.module or 'General'
         )
 
     def _create_admin_notification(self, bug, bug_id, title, tester_name, tester_emp_id):
@@ -176,7 +196,8 @@ class BugReportListCreateView(APIView):
             recipient_id='ADM001',
             notification_type='bug_created',
             message=f'New bug {bug_id} reported: "{title}" by {tester_name} ({tester_emp_id})',
-            bug_report=bug
+            bug_report=bug,
+            project_name=bug.module or 'General'
         )
 
     def _create_developer_notification(self, bug, bug_id, title, tester_name, tester_emp_id, dev_emp_id):
@@ -206,7 +227,8 @@ class BugReportListCreateView(APIView):
             recipient_id=bug.developer_id or dev_emp_id,
             notification_type='bug_assigned',
             message=f'New bug report submitted: [{bug_id}] {title} assigned to you by Tester {tester_name} ({tester_emp_id}).',
-            bug_report=bug
+            bug_report=bug,
+            project_name=bug.module or 'General'
         )
 
     def post(self, request):
@@ -341,15 +363,13 @@ class NotificationListCreateView(APIView):
         role = request.query_params.get('role') or request.query_params.get('recipient_role')
         recipient_id = request.query_params.get('recipient_id') or request.query_params.get('recipientId')
         
-        notifications = Notification.objects.all().order_by('-created_at')
+        notifications = Notification.objects.select_related('bug_report').all().order_by('-created_at')
 
         if role and role.strip().upper() == 'CTO':
-            query = Q(recipient_role__iexact='CTO')
-            if email:
-                query |= Q(recipient_email__iexact=email)
-            if recipient_id:
-                query |= Q(recipient_id__iexact=recipient_id) | Q(recipient_name__icontains=recipient_id)
-            notifications = notifications.filter(query)
+            notifications = notifications.filter(
+                Q(recipient_role__iexact='CTO') |
+                Q(notification_type__in=['project_status_updated', 'project_submitted'])
+            )
             serializer = NotificationSerializer(notifications, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         
@@ -449,13 +469,19 @@ class ProjectSubmissionListCreateView(APIView):
             sender_id=dev_id
         )
 
+        proj_name = (submission.project_name or 'General').strip().upper()
+        project_bugs = BugReport.objects.filter(module__iexact=proj_name)
+        total_count = project_bugs.count()
+        closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
+        pct = int((closed_count / total_count) * 100) if total_count > 0 else 100
+
         Notification.objects.create(
             recipient_email='cto@company.com',
             recipient_name='CTO',
             recipient_role='CTO',
             recipient_id='CTO001',
             notification_type='project_status_updated',
-            message=f'Project: {submission.project_name} | Status: Build Submitted',
+            message=f'{proj_name} progress is {pct}%',
             bug_report=None,
             project_name=submission.project_name,
             sender_id=dev_id

@@ -274,15 +274,24 @@
     }
   body {
     @apply bg-background text-foreground transition-colors duration-300;
-    overflow-x: hidden;
+    overflow: hidden !important;
+    height: 100vh;
+    max-height: 100vh;
     width: 100%;
     -webkit-tap-highlight-color: transparent;
-    }
+  }
   html {
     @apply font-sans;
-    overflow-x: hidden;
+    overflow: hidden !important;
+    height: 100vh;
+    max-height: 100vh;
     width: 100%;
-    }
+  }
+  #root {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden !important;
+  }
 }
 
 /* Custom scrollbars for responsive tables & scroll containers */

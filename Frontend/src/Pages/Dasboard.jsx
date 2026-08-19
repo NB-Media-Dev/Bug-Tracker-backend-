@@ -117,7 +117,6 @@ function Dasboard({ onNavigate }) {
       id: 1,
       label: "Total Users",
       value: String(totalUsersCount),
-      change: "System Active",
       color: "text-white bg-violet-500",
       accent: "bg-violet-500",
       icon: User2,
@@ -126,7 +125,6 @@ function Dasboard({ onNavigate }) {
       id: 2,
       label: "Testers",
       value: String(testersCount),
-      change: "QA Team",
       color: "text-white bg-teal-500",
       accent: "bg-teal-500",
       icon: SearchCheck,
@@ -135,7 +133,6 @@ function Dasboard({ onNavigate }) {
       id: 3,
       label: "Developers",
       value: String(developersCount),
-      change: "Engineering",
       color: "text-white bg-blue-500",
       accent: "bg-blue-500",
       icon: Code2Icon,
@@ -233,7 +230,7 @@ function Dasboard({ onNavigate }) {
       <div className="relative bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden p-4 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full w-fit">
-            <Shield size={12} /> System Console Active
+            <Shield size={12} />CTO 
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mt-2">
             Welcome back, {admin?.username || "vasanthan"}!
@@ -375,9 +372,6 @@ function Dasboard({ onNavigate }) {
                 Live Online Users ({onlineEmployees.length})
               </h3>
             </div>
-            <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 uppercase tracking-wide font-bold px-2 py-0.5 rounded-full shrink-0">
-              Real-time
-            </span>
           </div>
 
           <div className="p-4 space-y-4 max-h-[460px] overflow-y-auto">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, X, ExternalLink } from "lucide-react";
 import { API_BASE, authFetch } from "../lib/api";
+import { getProjectAcronym } from "../lib/utils";
 
 function Monitor() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,9 +149,30 @@ const mapSubmissionToProject = (sub, allBugs) => {
         setBugs(allBugs);
       }
 
+      const uniqueProjectMap = {};
+      let uniqueProjectCounter = 0;
+
       const mapped = data
-        .filter(sub => !sub.id.startsWith("FIX-"))
-        .map(sub => mapSubmissionToProject(sub, allBugs));
+        .filter((sub) => !sub.id.startsWith("FIX-"))
+        .map((sub) => {
+          const item = mapSubmissionToProject(sub, allBugs);
+          const projName = (item.project || "General").trim().toUpperCase();
+          const acronym = getProjectAcronym(projName).toLowerCase();
+          const devId = (item.developerId && item.developerId !== "N/A" ? item.developerId : "dev001").toLowerCase();
+
+          if (!uniqueProjectMap[projName]) {
+            uniqueProjectCounter += 1;
+            uniqueProjectMap[projName] = String(uniqueProjectCounter).padStart(3, "0");
+          }
+
+          const seq = uniqueProjectMap[projName];
+          const formattedProjectId = `${devId}-${acronym}-${seq}`;
+          return {
+            ...item,
+            formattedProjectId,
+            rawSubmissionId: item.id,
+          };
+        });
 
       setProjects(mapped);
     } catch (e) {
@@ -218,7 +240,8 @@ URL.revokeObjectURL(url);
     p.project.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.developer.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.tester.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.id.toLowerCase().includes(searchQuery.toLowerCase())
+    p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.formattedProjectId && p.formattedProjectId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -301,7 +324,7 @@ URL.revokeObjectURL(url);
                   return (
                       <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3.5 font-mono font-bold text-[11px] text-slate-500 whitespace-nowrap">
-                          {p.id}
+                          {p.formattedProjectId || p.id}
                         </td>
                         <td className="px-4 py-3.5 font-bold text-slate-900 dark:text-white uppercase">
                           {p.project}
