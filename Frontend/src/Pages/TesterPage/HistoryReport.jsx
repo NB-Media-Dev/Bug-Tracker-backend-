@@ -1,21 +1,9 @@
 import { useState, useEffect } from 'react';
 import { History, Eye, FileText, Clock, RefreshCw, FileSpreadsheet, CheckCircle2Icon } from 'lucide-react';
 import { API_BASE } from '../../lib/api';
-import { normalizeBug, getTesterInfo, matchesTester, downloadFile, getStatusBadgeStyle } from '../../lib/utils';
+import { getProjectAcronym, normalizeBug, getTesterInfo, matchesTester, downloadFile, getStatusBadgeStyle } from '../../lib/utils';
 import StatusFilterSelect from '../../components/shared/StatusFilterSelect';
 import BugDetailModal from '../../components/shared/BugDetailModal';
-
-const getProjectAcronym = (projectName) => {
-  if (!projectName?.trim()) return "PRJ";
-  const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return words.map((w) => w[0]).join("").toUpperCase();
-  }
-  const word = words[0];
-  if (word.length <= 4) return word.toUpperCase();
-  return word.slice(0, 2).toUpperCase();
-};
 
 function HistoryReport() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,21 +28,50 @@ function HistoryReport() {
       const data = await response.json();
       const filteredData = data.filter(b => matchesTester(b, testerName, testerEmail, testerId));
       
+      const rawMapped = filteredData.map(b => normalizeBug(b, { testerName, testerId, testerEmail }));
+
+      const chronological = [...rawMapped].sort((a, b) => {
+        const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId || a.id).replace(/\D/g, ''), 10) || 0);
+        const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId || b.id).replace(/\D/g, ''), 10) || 0);
+        if (numA !== numB) return numA - numB;
+        const dateA = new Date(a.created_at || a.assignedOn || 0).getTime();
+        const dateB = new Date(b.created_at || b.assignedOn || 0).getTime();
+        return dateA - dateB;
+      });
+
       const projectBugCounts = {};
-      const mapped = filteredData.map(b => {
-        const norm = normalizeBug(b, { testerName, testerId, testerEmail });
-        const projName = norm.module || "General";
+      const bugIdMap = new Map();
+
+      chronological.forEach((bug) => {
+        const projName = bug.module || "General";
         const acronym = getProjectAcronym(projName);
         projectBugCounts[acronym] = (projectBugCounts[acronym] || 0) + 1;
         const sequenceNum = String(projectBugCounts[acronym]).padStart(3, "0");
         const customBugId = `${acronym}-${sequenceNum}`;
-        return {
-          ...norm,
-          bugId: customBugId,
-          id: customBugId,
-          originalBugId: norm.bugId || norm.id,
-        };
+        const key = bug.rawId || bug.id;
+        bugIdMap.set(key, customBugId);
       });
+
+      const mapped = rawMapped
+        .map((bug) => {
+          const key = bug.rawId || bug.id;
+          const customBugId = bugIdMap.get(key) || formatBugId(bug);
+          return {
+            ...bug,
+            bugId: customBugId,
+            id: customBugId,
+            originalBugId: bug.bugId || bug.id,
+          };
+        })
+        .sort((a, b) => {
+          const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId || a.originalBugId).replace(/\D/g, ''), 10) || 0);
+          const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId || b.originalBugId).replace(/\D/g, ''), 10) || 0);
+          if (numA !== numB) return numA - numB;
+          const dateA = new Date(a.created_at || a.assignedOn || 0).getTime();
+          const dateB = new Date(b.created_at || b.assignedOn || 0).getTime();
+          return dateA - dateB;
+        });
+
       setHistoryLogs(mapped);
     } catch (e) {
       console.error("Error loading history logs from API", e);

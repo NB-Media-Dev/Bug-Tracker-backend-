@@ -17,6 +17,7 @@ export const getProjectAcronym = (projectName) => {
   }
   const word = words[0];
   if (word.length <= 4) return word.toUpperCase();
+  if (word.toLowerCase().startsWith("auth")) return "AUTH";
   return word.slice(0, 3).toUpperCase();
 };
 
@@ -81,6 +82,14 @@ export const formatNotificationMessage = (message, projectName = "General", bugs
   }
 
   return message.replace(/(\[?([A-Z0-9]+-\d+|\bBUG-\d+|\bGE-\d+)\]?)/gi, (match, fullMatch, bugIdStr) => {
+    const parts = bugIdStr.split("-");
+    if (parts.length === 2 && parts[0] && !["BUG", "PRJ", "GE"].includes(parts[0].toUpperCase())) {
+      const numStr = parts[1].replace(/\D/g, "");
+      const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
+      const formattedId = `${parts[0].toUpperCase()}-${seq}`;
+      return match.startsWith("[") ? `[${formattedId}]` : formattedId;
+    }
+
     const num = bugIdStr.replace(/\D/g, "");
     const formatted = formatBugId({ id: num, module: projectName });
     if (match.startsWith("[")) {

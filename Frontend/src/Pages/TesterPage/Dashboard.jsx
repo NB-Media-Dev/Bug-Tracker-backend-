@@ -350,7 +350,7 @@ function Dashboard({ onNavigate }) {
           <div className="p-3 border-b border-gray-100 bg-blue-50/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="text-blue-600" size={16} />
-              <h3 className="font-bold text-blue-900 text-xs uppercase tracking-wide">Developer Builds Stack</h3>
+              <h3 className="font-bold text-blue-900 text-xs uppercase tracking-wide">Developer Builds</h3>
             </div>
             {newNotifications.length > 0 && (
               <button

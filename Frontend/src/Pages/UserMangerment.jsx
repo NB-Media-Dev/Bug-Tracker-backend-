@@ -803,16 +803,14 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
             type="button"
             onClick={fetchEmployees}
             disabled={loading}
-            className="p-2.5 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-muted)] transition-colors cursor-pointer disabled:opacity-50"
-            title="Refresh list"
-          >
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Refresh list">
             <RefreshCw
               className={`h-4 w-4 ${
                 loading ? 'animate-spin' : ''
               }`}
-            />
+            />Refresh
           </button>
-
           {!isReadOnlyMode && (
             <button
               type="button"

@@ -275,6 +275,13 @@ class BugReportDetailView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def _validate_close_action(self, bug, new_status):
+        if new_status and str(new_status).strip().lower() == 'closed':
+            curr_status = (bug.status or bug.dev_status or '').strip().lower()
+            if curr_status not in ['closed', 'resolved', 'fixed'] and not bug.dev_resolved:
+                return Response(
+                    {'detail': 'Only bugs that have been marked as Resolved by the developer can be closed by the tester.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         return None
 
     def _process_patch_flags(self, data, new_status):
@@ -291,14 +298,7 @@ class BugReportDetailView(APIView):
     def _send_patch_notifications(self, updated_bug, new_status, old_status):
         try:
             proj_name = updated_bug.module or "General"
-            clean_proj = ''.join(e for e in proj_name if e.isalnum() or e.isspace()).strip()
-            words = clean_proj.split()
-            if len(words) > 1:
-                acronym = ''.join(w[0] for w in words).upper()
-            elif clean_proj:
-                acronym = clean_proj[:4].upper() if len(clean_proj) <= 4 else clean_proj[:3].upper()
-            else:
-                acronym = "PRJ"
+            acronym = self._get_project_acronym(proj_name)
 
             proj_bugs = list(BugReport.objects.filter(module__iexact=updated_bug.module).order_by('id'))
             try:
@@ -309,24 +309,83 @@ class BugReportDetailView(APIView):
             seq = f"{bug_idx:03d}"
             formatted_id = f"{acronym}-{seq}"
 
-            msg = f'Bug [{formatted_id}] status updated to "{updated_bug.status}"'
-            if new_status in ['Open', 'Closed', 'Not Fixed'] and updated_bug.developer_name and updated_bug.developer_name != 'Unassigned':
-                dev_name_clean = updated_bug.developer_name.split('(')[0].strip()
+            tester_title = updated_bug.tester_name or "Tester"
+            if new_status == "Closed":
+                msg = f'Tester {tester_title} verified and closed bug [{formatted_id}]'
+            elif new_status == "Not Fixed":
+                msg = f'Tester {tester_title} marked bug [{formatted_id}] as "Not Fixed"'
+            elif new_status == "Open":
+                msg = f'Tester {tester_title} updated bug [{formatted_id}] status to "Open"'
+            else:
+                msg = f'Bug [{formatted_id}] status updated to "{updated_bug.status}"'
+
+            dev_id = updated_bug.developer_id or getattr(updated_bug, 'developerId', None)
+            dev_name = updated_bug.developer_name or getattr(updated_bug, 'developerName', None) or getattr(updated_bug, 'developer', None)
+            
+            if new_status in ['Open', 'Closed', 'Not Fixed'] and dev_name and str(dev_name).strip().lower() != 'unassigned':
+                dev_name_clean = str(dev_name).split('(')[0].strip()
                 dev_email = ''
+                real_dev_id = dev_id or 'DEV001'
+
                 try:
-                    emp = Employee.objects.filter(name__icontains=dev_name_clean, role='Developer').first()
-                    if emp and emp.company_email:
+                    query = Q(role='Developer')
+                    if dev_id:
+                        query &= (Q(employee_id__iexact=dev_id) | Q(name__icontains=dev_name_clean))
+                    else:
+                        query &= Q(name__icontains=dev_name_clean)
+
+                    emp = Employee.objects.filter(query).first()
+                    if emp:
                         dev_email = emp.company_email
-                except Exception:
-                    pass
+                        real_dev_id = emp.employee_id
+                        if not updated_bug.developer_id:
+                            updated_bug.developer_id = emp.employee_id
+                            updated_bug.save(update_fields=['developer_id'])
+                except Exception as ex:
+                    logger.error(f"Error querying employee for dev notification: {ex}")
 
                 Notification.objects.create(
-                    recipient_email=dev_email or 'dev@bugtracker.com',
+                    recipient_email=dev_email or f"{dev_name_clean.lower().replace(' ', '')}@bugtracker.com",
                     recipient_name=dev_name_clean,
                     recipient_role='Developer',
-                    recipient_id=updated_bug.developer_id or 'DEV001',
+                    recipient_id=real_dev_id,
                     notification_type='bug_updated',
                     message=msg,
+                    bug_report=updated_bug,
+                    project_name=updated_bug.module or "General"
+                )
+
+            # 2. Notifications sent to Tester (when Developer updates status to Pending, Resolved, Fixed, In Progress)
+            if new_status in ['Pending', 'In Progress', 'In-Progress', 'Resolved', 'Fixed']:
+                if str(new_status).strip().lower() == 'pending':
+                    t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Pending"'
+                elif str(new_status).strip().lower() in ['resolved', 'fixed']:
+                    t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Resolved"'
+                else:
+                    t_msg = f'Developer {dev_name_clean} updated bug [{formatted_id}] status to "{new_status}"'
+
+                tester_email = updated_bug.tester_email or ""
+                tester_name_clean = str(updated_bug.tester_name or "Tester").split('(')[0].strip()
+                real_tester_id = updated_bug.tester_id or "TS001"
+
+                try:
+                    t_emp = Employee.objects.filter(
+                        Q(employee_id__iexact=real_tester_id) | Q(name__icontains=tester_name_clean),
+                        role='Tester'
+                    ).first()
+                    if t_emp:
+                        tester_email = t_emp.company_email or tester_email
+                        real_tester_id = t_emp.employee_id
+                except Exception as ex:
+                    logger.error(f"Error querying employee for tester notification: {ex}")
+
+                Notification.objects.create(
+                    recipient_email=tester_email or f"{tester_name_clean.lower().replace(' ', '')}@bugtracker.com",
+                    recipient_name=tester_name_clean,
+                    recipient_role='Tester',
+                    recipient_id=real_tester_id,
+                    notification_type='bug_updated',
+                    message=t_msg,
                     bug_report=updated_bug,
                     project_name=updated_bug.module or "General"
                 )

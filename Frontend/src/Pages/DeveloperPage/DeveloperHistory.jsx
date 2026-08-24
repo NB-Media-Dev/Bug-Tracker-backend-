@@ -1,19 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { History, Download, Eye } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { downloadFile, escapeCSV, formatDateStandard } from "../../lib/utils";
-
-const getProjectAcronym = (projectName) => {
-  if (!projectName?.trim()) return "PRJ";
-  const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return words.map((w) => w[0]).join("").toUpperCase();
-  }
-  const word = words[0];
-  if (word.length <= 4) return word.toUpperCase();
-  return word.slice(0, 3).toUpperCase();
-};
+import { downloadFile, escapeCSV, formatDateStandard, getProjectAcronym } from "../../lib/utils";
 
 function DeveloperHistory({ developer }) {
   const [historyLogs, setHistoryLogs] = useState([]);
@@ -108,19 +96,46 @@ function DeveloperHistory({ developer }) {
       }),
     ];
 
+    const chronological = [...rawCombined].sort((a, b) => {
+      const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId).replace(/\D/g, ''), 10) || 0);
+      const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId).replace(/\D/g, ''), 10) || 0);
+      if (numA !== numB) return numA - numB;
+      const dateA = new Date(a.assignedOn || 0).getTime();
+      const dateB = new Date(b.assignedOn || 0).getTime();
+      return dateA - dateB;
+    });
+
     const projectBugCounts = {};
-    const combined = rawCombined.map((item) => {
+    const bugIdMap = new Map();
+
+    chronological.forEach((item) => {
       const projAcronym = getProjectAcronym(item.module);
       projectBugCounts[projAcronym] = (projectBugCounts[projAcronym] || 0) + 1;
       const sequenceNum = String(projectBugCounts[projAcronym]).padStart(3, "0");
       const customBugId = `${projAcronym}-${sequenceNum}`;
-      return {
-        ...item,
-        id: item.rawId || customBugId,
-        bugId: customBugId,
-        originalBugId: item.rawId,
-      };
+      const key = item.rawId;
+      bugIdMap.set(key, customBugId);
     });
+
+    const combined = rawCombined
+      .map((item) => {
+        const key = item.rawId;
+        const customBugId = bugIdMap.get(key) || item.rawId;
+        return {
+          ...item,
+          id: item.rawId || customBugId,
+          bugId: customBugId,
+          originalBugId: item.rawId,
+        };
+      })
+      .sort((a, b) => {
+        const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId).replace(/\D/g, ''), 10) || 0);
+        const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId).replace(/\D/g, ''), 10) || 0);
+        if (numA !== numB) return numA - numB;
+        const dateA = new Date(a.assignedOn || 0).getTime();
+        const dateB = new Date(b.assignedOn || 0).getTime();
+        return dateA - dateB;
+      });
 
     setHistoryLogs(combined);
   };

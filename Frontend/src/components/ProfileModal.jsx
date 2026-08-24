@@ -134,7 +134,9 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter full name"
                   required
-                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all"
+                 readOnly
+                  disabled
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100/70 text-slate-500 font-mono font-medium cursor-not-allowed"
                 />
               </div>
             </div>
@@ -152,7 +154,9 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="Enter job title"
                   required
-                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all"
+                  readOnly
+                  disabled
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-100/70 text-slate-500 font-mono font-medium cursor-not-allowed"
                 />
               </div>
             </div>
@@ -174,15 +178,7 @@ function PublicInfoTab({ currentUser, currentRole, userEmail, onUpdateUser }) {
               />
             </div>
           </div>
-
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50 active:scale-98"
-            >
-              {isSaving ? 'Saving...' : 'Save Public Info'}
-            </button>
           </div>
         </form>
       </div>

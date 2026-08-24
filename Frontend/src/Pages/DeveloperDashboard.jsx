@@ -212,27 +212,35 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
     return "In Progress";
   };
 
-  const getBadgeType = (type) => {
+  const getBadgeType = (type, message = "") => {
     if (type === "build_accepted") return "Build Accepted";
-    if (type === "bug_updated") return "Not Fixed Alert";
+    if (type === "bug_updated") {
+      const m = (message || "").toLowerCase();
+      if (m.includes("not fixed")) return "Not Fixed Alert";
+      if (m.includes("closed")) return "Bug Closed";
+      if (m.includes("reopened") || m.includes("open")) return "Bug Reopened";
+      return "Bug Updated";
+    }
     return "Tester Update";
   };
 
   const matchRecipient = (n, devId, devEmail, devName) => {
     if (n?.recipient_role !== "Developer") return false;
 
+    const cleanDevName = (devName || "").split("(")[0].trim().toLowerCase();
+    const cleanRecipName = (n.recipient_name || "").split("(")[0].trim().toLowerCase();
+
     const matchId = Boolean(devId) && n.recipient_id?.toUpperCase() === devId.toUpperCase();
     const matchEmail = Boolean(devEmail) && n.recipient_email?.toLowerCase() === devEmail.toLowerCase();
-    const matchName = n.recipient_name?.toLowerCase()?.includes(devName?.toLowerCase() || "");
+    const matchName = Boolean(cleanDevName) && Boolean(cleanRecipName) && (
+      cleanDevName.includes(cleanRecipName) || cleanRecipName.includes(cleanDevName)
+    );
 
     return Boolean(matchId || matchEmail || matchName);
   };
 
   const filterNotificationType = (n) => {
     if (n.notification_type === "bug_assigned") return false;
-    if (n.notification_type === "bug_updated") {
-      return !!n.message?.toLowerCase().includes("not fixed");
-    }
     return true;
   };
 
@@ -254,10 +262,11 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
           .map((n) => ({
             id: n.id,
             message: n.message,
+            project_name: n.project_name || n.bug_report?.module || n.module || "General",
             rawTimestamp: n.created_at || new Date().toISOString(),
             timestamp: formatTimestamp(n.created_at),
             read: n.is_read || false,
-            badge: getBadgeType(n.notification_type),
+            badge: getBadgeType(n.notification_type, n.message),
           }))
         : [];
     }
@@ -368,11 +377,19 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+    loadBugs();
+    const interval = setInterval(() => {
+      loadNotifications();
+      loadBugs();
+    }, 15000);
     window.addEventListener("notifications_updated", loadNotifications);
+    window.addEventListener("bugs_updated", loadNotifications);
+    window.addEventListener("bugs_updated", loadBugs);
     return () => {
       clearInterval(interval);
       window.removeEventListener("notifications_updated", loadNotifications);
+      window.removeEventListener("bugs_updated", loadNotifications);
+      window.removeEventListener("bugs_updated", loadBugs);
     };
   }, []);
 
@@ -642,7 +659,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                           className="px-2 py-0.5 text-[10px] font-semibold border border-blue-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
                           title="Filter notifications by date"
                         />
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() => {
                             const allIds = filteredNotifications
@@ -667,7 +684,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                           title="Mark all as read"
                         >
                           <CheckCheck size={11} /> Read All
-                        </button>
+                        </button> */}
                       </div>
                     </div>
 

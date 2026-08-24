@@ -214,7 +214,7 @@ const mapSubmissionToProject = (sub, allBugs) => {
       bug.status || bug.testerStatus || '',
       bug.severity || '',
       project.project || project.project_name || '',
-      project.id || '',
+      project.formattedProjectId || project.id || '',
       bug.developer_name || bug.developerName || '',
       bug.developer_id || bug.developerId || '',
       bug.tester_name || bug.testerName || '',
@@ -316,7 +316,6 @@ URL.revokeObjectURL(url);
               ) : (
                 filteredProjects.map((p) => {
                   const projectBugs = getProjectBugs(p);
-
                   const totalBugs = projectBugs.length;
                   const openCount = projectBugs.filter(b => (b.status || b.testerStatus || 'Open') === 'Open').length;
                   const closedCount = projectBugs.filter(b => ['Closed', 'Resolved', 'Not Fixed'].includes((b.status || b.testerStatus || '').toString())).length;
@@ -380,7 +379,7 @@ URL.revokeObjectURL(url);
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-sidebar-border)] bg-[var(--color-muted)]/30">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">
-                  {selectedProject.id}
+                  {selectedProject.formattedProjectId || selectedProject.id}
                 </span>
                 <h3 className="font-bold text-sm truncate max-w-[260px] text-gray-900 dark:text-white uppercase">
                   {selectedProject.project}
@@ -440,7 +439,7 @@ URL.revokeObjectURL(url);
 
               {selectedProject.subject && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl">
-                  <span className="text-[10px] text-slate-500 block font-semibold uppercase tracking-wide">Admin Notes</span>
+                  <span className="text-[10px] text-slate-500 block font-semibold uppercase tracking-wide">project </span>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">{selectedProject.subject}</p>
                 </div>
               )}
@@ -490,7 +489,7 @@ URL.revokeObjectURL(url);
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Project: <span className="font-semibold text-slate-800 dark:text-slate-200">{confirmGenerateProject.project}</span>
                 <br />
-                Project ID: <span className="font-semibold text-slate-800 dark:text-slate-200">{confirmGenerateProject.id}</span>
+                Project ID: <span className="font-semibold text-slate-800 dark:text-slate-200">{confirmGenerateProject.formattedProjectId || confirmGenerateProject.id}</span>
               </p>
             </div>
             <div className="flex gap-3">

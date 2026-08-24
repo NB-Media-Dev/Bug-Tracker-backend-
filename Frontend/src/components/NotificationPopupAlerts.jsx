@@ -226,14 +226,23 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
       {activeAlerts.map((alert) => {
         const config = getAlertStyle(alert);
         const projName = alert.project_name || alert.module || alert.bug_report?.module || "General";
-        const msgMatch = alert.message ? alert.message.match(/\[([A-Z0-9]+-\d+|\bGE-\d+|\bBUG-\d+|\d+)\]/i) || alert.message.match(/([A-Z0-9]+-\d+|\bGE-\d+|\bBUG-\d+|\d+)/i) : null;
-        const rawBugId = msgMatch ? msgMatch[1] : (alert.bug_id || alert.bug_report?.bug_id || alert.id || "");
-        
-        const bugId = formatBugId({
-          bugId: rawBugId,
-          module: projName,
-          id: rawBugId,
-        });
+        const isProjectNotif = 
+          (alert.notification_type || "").includes("project") ||
+          (alert.notification_type || "").includes("build") ||
+          (alert.message || "").toLowerCase().includes("progress is");
+
+        let bugId = "";
+        if (!isProjectNotif) {
+          const msgMatch = alert.message ? alert.message.match(/\[([A-Z0-9]+-\d+)\]/i) || alert.message.match(/\b([A-Z0-9]+-\d+)\b/i) : null;
+          const rawBugId = msgMatch ? msgMatch[1] : (alert.bug_id || alert.bug_report?.bug_id || alert.bug_report?.id || "");
+          if (rawBugId) {
+            bugId = formatBugId({
+              bugId: rawBugId,
+              module: projName,
+              id: rawBugId,
+            });
+          }
+        }
 
         return (
           <div

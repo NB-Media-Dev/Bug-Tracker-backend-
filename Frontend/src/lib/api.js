@@ -20,6 +20,14 @@ export const getAuthToken = () => {
 export const resolveApiUrl = (url) => {
   if (!url) return "/api";
   if (url.startsWith("http://") || url.startsWith("https://")) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.pathname.startsWith("/api")) {
+        return parsed.pathname + parsed.search;
+      }
+    } catch {
+      // fallback to original url if parsing fails
+    }
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
@@ -72,6 +80,12 @@ export const authFetch = async (url, options = {}) => {
         if (retryRes.ok) {
           return retryRes;
         }
+      }
+
+      // If response is a proxy error (502, 503, 504), try next candidate URL
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        lastError = new Error(`Proxy error status ${response.status}`);
+        continue;
       }
 
       return response;

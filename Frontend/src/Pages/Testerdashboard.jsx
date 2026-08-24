@@ -14,8 +14,7 @@ import NotificationPopupAlerts from "../components/NotificationPopupAlerts";
 import ProfileModal from "../components/ProfileModal";
 import UnsavedBugWarningModal from "../components/UnsavedBugWarningModal";
 import { saveStoredAvatar, getStoredAvatar } from "../lib/avatar";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+import { API_BASE } from "../lib/api";
 
 function Testerdashboard({ tester: propTester, onLogout }) {
   const [testUser, setTestUser] = useState(() => {
@@ -203,10 +202,8 @@ function Testerdashboard({ tester: propTester, onLogout }) {
         const roleMatch = (n.recipient_role || "").toLowerCase() === "tester";
         if (!roleMatch) return false;
 
-        const isBuildSub =
-          n.notification_type === "build_submitted" ||
-          n.notificationType === "build_submitted";
-        if (!isBuildSub) return false;
+        const cleanCredName = (credentials.name || "").split("(")[0].trim().toLowerCase();
+        const cleanRecipName = (n.recipient_name || "").split("(")[0].trim().toLowerCase();
 
         const idMatch =
           credentials.id &&
@@ -219,10 +216,9 @@ function Testerdashboard({ tester: propTester, onLogout }) {
           n.recipient_email.trim().toLowerCase() ===
           credentials.email.trim().toLowerCase();
         const nameMatch =
-          credentials.name &&
-          n.recipient_name &&
-          n.recipient_name.trim().toLowerCase() ===
-          credentials.name.trim().toLowerCase();
+          Boolean(cleanCredName) &&
+          Boolean(cleanRecipName) &&
+          (cleanCredName.includes(cleanRecipName) || cleanRecipName.includes(cleanCredName));
 
         return (
           idMatch ||

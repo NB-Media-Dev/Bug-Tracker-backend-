@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { normalizeBug, navigateTo, downloadFile, getTesterInfo, escapeCSV, formatDateStandard } from "../../lib/utils";
+import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, escapeCSV, formatDateStandard } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function Mybugreport({ onNavigate }) {
@@ -234,11 +234,15 @@ function Mybugreport({ onNavigate }) {
       case "Saved":
         return "bg-amber-50 text-amber-800 border border-amber-300 font-bold";
       case "Open":
-        return "bg-blue-50 text-blue-700 border border-blue-250 font-bold";
+        return "bg-blue-50 text-blue-700 border border-blue-200 font-bold";
       case "Resolved":
         return "bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold";
+      case "Not Fixed":
+        return "bg-red-50 text-red-700 border border-red-200 font-bold";
+      case "Closed":
+        return "bg-slate-100 text-slate-700 border border-slate-300 font-bold";
       case "Pending":
-        return "bg-amber-50 text-amber-705 border border-amber-250 font-bold";
+        return "bg-amber-50 text-amber-700 border border-amber-200 font-bold";
       default:
         return "bg-gray-100 text-gray-700 border border-gray-300 font-bold";
     }
@@ -322,7 +326,6 @@ function Mybugreport({ onNavigate }) {
           }),
         },
       );
-
       if (response.ok) {
         alert("Bug report updated successfully!");
         setEditingBug(null);
@@ -384,8 +387,9 @@ function Mybugreport({ onNavigate }) {
   };
 
   const canCloseBug = (bug) => {
-    const status = (bug.status || "").trim().toLowerCase();
-    return ["resolved", "not fixed", "notfixed", "fixed"].includes(status);
+    if (!bug) return false;
+    const status = (bug.status || bug.devStatus || "").trim().toLowerCase();
+    return ["resolved", "fixed", "closed"].includes(status) || Boolean(bug.devResolved);
   };
 
   const handleReopenNavigation = (bugData) => {
@@ -408,6 +412,11 @@ function Mybugreport({ onNavigate }) {
         (b.id && String(b.id) === String(rawId))
     );
     if (!targetBug) return;
+
+    if (newStatus === "Closed" && !canCloseBug(targetBug)) {
+      alert("Only bugs that have been resolved by the developer can be closed by the tester.");
+      return;
+    }
 
     if ((targetBug.isSaved || targetBug.status === "Saved") && newStatus === "Open") {
       try {
@@ -609,32 +618,49 @@ function Mybugreport({ onNavigate }) {
     originalData: sb,
   }));
 
-  const getProjectAcronym = (projectName) => {
-    if (!projectName?.trim()) return "PRJ";
-    const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
-    const words = clean.split(/\s+/).filter(Boolean);
-    if (words.length > 1) {
-      return words.map((w) => w[0]).join("").toUpperCase();
-    }
-    const word = words[0];
-    if (word.length <= 4) return word.toUpperCase();
-    return word.slice(0, 2).toUpperCase();
-  };
+
 
   const projectBugCounts = {};
   const rawCombinedBugs = [...bugs, ...normalizedSavedBugs];
-  const allCombinedBugs = rawCombinedBugs.map((bug) => {
+
+  const chronologicalBugs = [...rawCombinedBugs].sort((a, b) => {
+    const numA = typeof a.rawId === "number" ? a.rawId : (parseInt(String(a.rawId || a.id).replace(/\D/g, ""), 10) || 0);
+    const numB = typeof b.rawId === "number" ? b.rawId : (parseInt(String(b.rawId || b.id).replace(/\D/g, ""), 10) || 0);
+    if (numA !== numB) return numA - numB;
+    const dateA = new Date(a.created_at || a.assignedOn || a.Assgined_Date || 0).getTime();
+    const dateB = new Date(b.created_at || b.assignedOn || b.Assgined_Date || 0).getTime();
+    return dateA - dateB;
+  });
+
+  const bugIdMap = new Map();
+  chronologicalBugs.forEach((bug) => {
     const projName = bug.module || "General";
     const acronym = getProjectAcronym(projName);
     projectBugCounts[acronym] = (projectBugCounts[acronym] || 0) + 1;
     const sequenceNum = String(projectBugCounts[acronym]).padStart(3, "0");
     const customBugId = `${acronym}-${sequenceNum}`;
+    const key = bug.rawId || bug.id;
+    bugIdMap.set(key, customBugId);
+  });
+
+  const mappedCombinedBugs = rawCombinedBugs.map((bug) => {
+    const key = bug.rawId || bug.id;
+    const customBugId = bugIdMap.get(key) || formatBugId(bug);
     return {
       ...bug,
       id: customBugId,
       bugId: customBugId,
       originalBugId: bug.id || bug.bugId,
     };
+  });
+
+  const allCombinedBugs = [...mappedCombinedBugs].sort((a, b) => {
+    const numA = typeof a.rawId === "number" ? a.rawId : (parseInt(String(a.rawId || a.originalBugId).replace(/\D/g, ""), 10) || 0);
+    const numB = typeof b.rawId === "number" ? b.rawId : (parseInt(String(b.rawId || b.originalBugId).replace(/\D/g, ""), 10) || 0);
+    if (numA !== numB) return numA - numB;
+    const dateA = new Date(a.created_at || a.assignedOn || a.Assgined_Date || 0).getTime();
+    const dateB = new Date(b.created_at || b.assignedOn || b.Assgined_Date || 0).getTime();
+    return dateA - dateB;
   });
 
   const developersList = [
@@ -730,7 +756,7 @@ function Mybugreport({ onNavigate }) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans text-gray-800 antialiased p-6">
+    <div className="max-w-7xl mx-auto space-y-4 font-sans text-gray-800 antialiased p-4 sm:p-5">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -1009,14 +1035,14 @@ function Mybugreport({ onNavigate }) {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                        <th className="p-3.5 w-28">Bug ID</th>
-                        <th className="p-3.5">Title / Summary</th>
-                        <th className="p-3.5">Tester</th>
-                        <th className="p-3.5">Developer</th>
-                        <th className="p-3.5 w-28">Start Date</th>
-                        <th className="p-3.5 w-28">End Date</th>
-                        <th className="p-3.5 w-36">Status</th>
-                        <th className="p-3.5 w-32 text-center">Action</th>
+                        <th className="px-3 py-2.5 w-28">Bug ID</th>
+                        <th className="px-3 py-2.5">Title / Summary</th>
+                        <th className="px-3 py-2.5">Tester</th>
+                        <th className="px-3 py-2.5">Developer</th>
+                        <th className="px-3 py-2.5 w-28">Start Date</th>
+                        <th className="px-3 py-2.5 w-28">End Date</th>
+                        <th className="px-3 py-2.5 w-36">Status</th>
+                        <th className="px-3 py-2.5 w-32 text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 text-xs text-gray-700">
@@ -1060,11 +1086,11 @@ function Mybugreport({ onNavigate }) {
                             }`}
                           >
                             <td
-                              className={`p-3.5 font-mono font-bold text-gray-900 ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
+                              className={`px-3 py-2.5 font-mono font-bold text-gray-900 ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
                             >
                               {bug.id}
                             </td>
-                            <td className="p-3.5 max-w-xs sm:max-w-md break-words break-all">
+                            <td className="px-3 py-2.5 max-w-xs sm:max-w-md break-words break-all">
                               <span
                                 className={`font-bold text-gray-900 block break-words break-all leading-snug ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
                               >
@@ -1080,37 +1106,38 @@ function Mybugreport({ onNavigate }) {
                               </span>
                             </td>
                             <td
-                              className={`p-3.5 text-gray-800 font-semibold uppercase ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
+                              className={`px-3 py-2.5 text-gray-800 font-semibold uppercase ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
                             >
                               {bug.testerName || "Kamatchi"}{" "}
                               <span className="text-[10px] text-gray-400 font-normal">
                                 ({bug.testerId || "TST201"})
                               </span>
                             </td>
-                            <td className="p-3.5 text-gray-800 font-semibold uppercase">
+                            <td className="px-3 py-2.5 text-gray-800 font-semibold uppercase">
                               {bug.developer}{" "}
                               <span className="text-[10px] text-gray-400 font-normal">
                                 ({bug.developerId || "N/A"})
                               </span>
                             </td>
-                            <td className="p-3.5 text-gray-600 font-mono">
+                            <td className="px-3 py-2.5 text-gray-600 font-mono">
                               {formatDateStandard(bug.Assgined_Date || bug.assignedOn)}
                             </td>
-                            <td className="p-3.5 text-gray-600 font-mono">
+                            <td className="px-3 py-2.5 text-gray-600 font-mono">
                               {formatDateStandard(bug.endDate || bug.dueDate)}
                             </td>
 
-                            <td className="p-3.5">
+                            <td className="px-3 py-2.5">
                               {isBugAuthor ? (
                                 <select
                                   value={bug.status || "Open"}
+                                  title={!canCloseBug(bug) ? "Developer must resolve this bug before it can be closed by tester" : ""}
                                   onChange={(e) =>
                                     handleTesterStatusChange(
                                       bug.rawId || bug.id || bug.bugId,
                                       e.target.value,
                                     )
                                   }
-                                  className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer outline-none ${getStatusBadgeStyle(bug.status)}`}
+                                  className={`w-auto px-2.5 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer outline-none ${getStatusBadgeStyle(bug.status)}`}
                                 >
                                   {bug.status !== "Open" &&
                                     bug.status !== "Closed" &&
@@ -1120,7 +1147,13 @@ function Mybugreport({ onNavigate }) {
                                       </option>
                                     )}
                                   <option value="Open">Open</option>
-                                  <option value="Closed">Closed</option>
+                                  <option
+                                    value="Closed"
+                                    disabled={!canCloseBug(bug)}
+                                    title="Developer Not Resolved ..."
+                                  >
+                                    Closed
+                                  </option>
                                   <option value="Not Fixed">Not Fixed</option>
                                 </select>
                               ) : (
@@ -1133,7 +1166,7 @@ function Mybugreport({ onNavigate }) {
                               )}
                             </td>
 
-                            <td className="p-3.5 text-center">
+                            <td className="px-3 py-2.5 text-center">
                               <div className="flex items-center justify-center gap-2">
                                 <button
                                   onClick={() => handleOpenDetails(bug)}
