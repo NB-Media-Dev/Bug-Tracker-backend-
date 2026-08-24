@@ -474,12 +474,12 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
 
     try {
       const endpoint = role.toLowerCase() === 'admin'
-        ? `${API_BASE}/api/auth/change-password/`
-        : `${API_BASE}/api/users/change-password/`;
+        ? '/api/auth/change-password/'
+        : '/api/users/change-password/';
 
-      const resolvedEmail = userEmail || currentUser.company_email || currentUser.email || currentUser.personal_email || currentUser.username || '';
+      const resolvedEmail = userEmail || currentUser.company_email || currentUser.email || currentUser.personal_email || currentUser.employee_id || currentUser.username || '';
 
-      const response = await fetch(endpoint, {
+      const response = await authFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

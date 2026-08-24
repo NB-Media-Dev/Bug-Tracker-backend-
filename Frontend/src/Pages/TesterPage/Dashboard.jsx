@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
+import { getTesterInfo, matchesTester } from "../../lib/utils";
 
 function Dashboard({ onNavigate }) {
   const tester_user = JSON.parse(localStorage.getItem("tester_user")) || { name: "QA Tester" };
@@ -40,14 +41,19 @@ function Dashboard({ onNavigate }) {
   }, [readNotifIds]);
 
   const loadDashboardData = async () => {
+    const { name: testerName, email: testerEmail, id: testerId } = getTesterInfo();
+
     try {
       const [bugsRes, subsRes] = await Promise.all([
-        authFetch(`${API_BASE}/api/bugs/`),
-        authFetch(`${API_BASE}/api/bugs/submissions/`)
+        authFetch('/api/bugs/'),
+        authFetch('/api/bugs/submissions/')
       ]);
       if (bugsRes.ok) {
         const bugsData = await bugsRes.json();
-        setReportedBugs(bugsData);
+        const myBugs = (Array.isArray(bugsData) ? bugsData : []).filter((b) =>
+          matchesTester(b, testerName, testerEmail, testerId)
+        );
+        setReportedBugs(myBugs);
       }
       if (subsRes.ok) {
         const subsData = await subsRes.json();

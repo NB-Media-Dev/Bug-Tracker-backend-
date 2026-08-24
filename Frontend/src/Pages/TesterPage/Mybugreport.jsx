@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, escapeCSV, formatDateStandard } from "../../lib/utils";
+import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, matchesTester, escapeCSV, formatDateStandard } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function Mybugreport({ onNavigate }) {
@@ -140,7 +140,7 @@ function Mybugreport({ onNavigate }) {
 
   const loadAcceptedSubmissions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/submissions/`);
+      const response = await authFetch('/api/bugs/submissions/');
       if (response.ok) {
         const data = await response.json();
         const items = Array.isArray(data) ? data : data.results || [];
@@ -153,12 +153,13 @@ function Mybugreport({ onNavigate }) {
 
   const loadBugs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/`);
+      const response = await authFetch('/api/bugs/');
 
       if (response.ok) {
         const data = await response.json();
+        const allBugs = Array.isArray(data) ? data : data.results || [];
 
-        const mapped = data.map((b) => ({
+        const mapped = allBugs.map((b) => ({
           ...normalizeBug(b),
           devResolved: b.devResolved || b.dev_resolved || false,
         }));
@@ -252,7 +253,7 @@ function Mybugreport({ onNavigate }) {
     setViewingBug(bug);
     if (bug.devResolved) {
       try {
-        await fetch(`${API_BASE}/api/bugs/${bug.rawId || bug.id}/`, {
+        await authFetch(`/api/bugs/${bug.rawId || bug.id}/`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ devResolved: false, dev_resolved: false }),
@@ -369,7 +370,7 @@ function Mybugreport({ onNavigate }) {
 
       try {
         const deleteId = targetBug?.rawId || targetBug?.bugId || rawId;
-        const response = await fetch(`${API_BASE}/api/bugs/${deleteId}/`, {
+        const response = await authFetch(`/api/bugs/${deleteId}/`, {
           method: "DELETE",
         });
         if (response.ok) {
@@ -421,7 +422,7 @@ function Mybugreport({ onNavigate }) {
     if ((targetBug.isSaved || targetBug.status === "Saved") && newStatus === "Open") {
       try {
         const orig = targetBug.originalData || targetBug;
-        const res = await fetch(`${API_BASE}/api/bugs/`, {
+        const res = await authFetch('/api/bugs/', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -531,7 +532,7 @@ function Mybugreport({ onNavigate }) {
     for (const b of savedBugsList) {
       const orig = b.originalData || b;
       try {
-        const res = await fetch(`${API_BASE}/api/bugs/`, {
+        const res = await authFetch('/api/bugs/', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

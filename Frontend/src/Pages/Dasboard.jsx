@@ -233,7 +233,7 @@ function Dasboard({ onNavigate }) {
             <Shield size={12} />CTO 
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 mt-2">
-            Welcome back, {admin?.username || "vasanthan"}!
+            Welcome back, {admin?.username || "CTO"} !
           </h1>
           <p className="text-xs text-gray-500 max-w-2xl">
             Monitor system health, analyze logged bugs, and coordinate

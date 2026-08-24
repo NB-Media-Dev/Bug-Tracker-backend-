@@ -91,11 +91,6 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
     email: '',
     role: 'Developer',
   });
-
-  // --------------------------------------------------
-  // FETCH EMPLOYEES
-  // --------------------------------------------------
-
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     setFetchError('');
@@ -885,7 +880,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
             onChange={(e) =>
               setSearchQuery(e.target.value)
             }
-            className="w-full pl-10 pr-10 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+            className="w-full md:w-85 pl-10 pr-10 py-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
           />
 
           {searchQuery && (
@@ -1133,43 +1128,6 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
                   </option>
                 </select>
               </div>
-
-              {/* PASSWORD */}
-              <div>
-                <label
-                  htmlFor="edit-password"
-                  className="block text-xs font-semibold text-[var(--color-muted-foreground)] mb-1.5"
-                >
-                  New Password{' '}
-                  <span className="text-[10px] text-gray-400 font-normal">
-                    (Leave blank to keep current)
-                  </span>
-                </label>
-
-                <input
-                  type="password"
-                  id="edit-password"
-                  name="password"
-                  placeholder="Enter new password"
-                  value={
-                    editUserData.password || ''
-                  }
-                  onChange={handleEditInputChange}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-[var(--color-background)] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all ${
-                    formErrors.password
-                      ? 'border-red-500'
-                      : 'border-[var(--color-border)]'
-                  }`}
-                />
-
-                {formErrors.password && (
-                  <p className="text-xs text-red-500 mt-1">
-                    {formErrors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* BUTTONS */}
               <div className="flex justify-end gap-3 pt-3 border-t border-[var(--color-border)]">
                 <button
                   type="button"

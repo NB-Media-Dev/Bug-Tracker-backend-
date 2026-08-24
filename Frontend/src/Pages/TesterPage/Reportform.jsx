@@ -12,7 +12,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { getProjectPrefix } from "../../lib/theme";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, authFetch } from "../../lib/api";
 import { formatDateStandard, generateContinuousBugId, formatBugId } from "../../lib/utils";
 
 function Reportform({ onNavigate }) {
@@ -105,7 +105,7 @@ function Reportform({ onNavigate }) {
     for (const b of bugsToSend) {
       if (b.isPosted) continue;
       try {
-        await fetch(`${API_BASE}/api/bugs/`, {
+        await authFetch('/api/bugs/', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -227,7 +227,7 @@ function Reportform({ onNavigate }) {
 
   const loadAllBugs = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/bugs/`);
+      const res = await authFetch('/api/bugs/');
       if (res.ok) {
         const data = await res.json();
         setAllBugs(data);
@@ -270,7 +270,7 @@ function Reportform({ onNavigate }) {
 
   const loadProjectSubmissions = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/bugs/submissions/`);
+      const res = await authFetch('/api/bugs/submissions/');
       if (res.ok) {
         const data = await res.json();
         const items = data.results || (Array.isArray(data) ? data : []);
@@ -283,7 +283,7 @@ function Reportform({ onNavigate }) {
 
   const loadDevelopers = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/users/?role=Developer`);
+      const res = await authFetch('/api/users/?role=Developer');
       if (res.ok) {
         const data = await res.json();
         const devItems = data.results || (Array.isArray(data) ? data : []);
@@ -850,7 +850,7 @@ function Reportform({ onNavigate }) {
 
       let existingBugs = [];
       try {
-        const res = await fetch(`${API_BASE}/api/bugs/`);
+        const res = await authFetch('/api/bugs/');
         if (res.ok) existingBugs = await res.json();
       } catch (err) {
         console.error("Error loading database bugs for import", err);
@@ -1044,7 +1044,7 @@ function Reportform({ onNavigate }) {
   };
 
   const applyPostedEdit = async (parsedDevName, parsedDevId) => {
-    const response = await fetch(`${API_BASE}/api/bugs/${editingBugId}/`, {
+    const response = await authFetch(`/api/bugs/${editingBugId}/`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1119,7 +1119,7 @@ function Reportform({ onNavigate }) {
 
   const handleReopenBugSubmit = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/${reopenBugId}/`, {
+      const response = await authFetch(`/api/bugs/${reopenBugId}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1181,7 +1181,7 @@ function Reportform({ onNavigate }) {
 
     let existingBugs = [];
     try {
-      const res = await fetch(`${API_BASE}/api/bugs/`);
+      const res = await authFetch('/api/bugs/');
       if (res.ok) existingBugs = await res.json();
     } catch (err) {
       console.error("Error loading existing bugs for ID calculation", err);

@@ -14,7 +14,7 @@ import NotificationPopupAlerts from "../components/NotificationPopupAlerts";
 import ProfileModal from "../components/ProfileModal";
 import UnsavedBugWarningModal from "../components/UnsavedBugWarningModal";
 import { saveStoredAvatar, getStoredAvatar } from "../lib/avatar";
-import { API_BASE } from "../lib/api";
+import { API_BASE, authFetch } from "../lib/api";
 
 function Testerdashboard({ tester: propTester, onLogout }) {
   const [testUser, setTestUser] = useState(() => {
@@ -162,9 +162,9 @@ function Testerdashboard({ tester: propTester, onLogout }) {
 
     try {
       const [subsRes, notifsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/bugs/submissions/`),
-        fetch(
-          `${API_BASE}/api/bugs/notifications/?recipient_id=${credentials.id}`,
+        authFetch('/api/bugs/submissions/'),
+        authFetch(
+          `/api/bugs/notifications/?recipient_id=${credentials.id}`,
         ),
       ]);
       if (subsRes.ok) apiSubmissions = await subsRes.json();
@@ -277,7 +277,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
   const acceptBuildSubmission = async (notif, testerName, testerId) => {
     const rawId = notif.id.replace("SUB-", "");
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/submissions/${rawId}/`, {
+      const response = await authFetch(`/api/bugs/submissions/${rawId}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -136,15 +136,15 @@ class EmployeeLoginView(APIView):
         email = serializer.validated_data['email'].strip().lower()
         password = serializer.validated_data['password']
 
-        try:
-            employee = Employee.objects.get(company_email=email)
-        except Employee.DoesNotExist:
+        employee = Employee.objects.filter(Q(company_email__iexact=email) | Q(employee_id__iexact=email)).first()
+        if not employee:
             return Response(
                 {'detail': 'Invalid company email or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        if not check_password(password, employee.company_password_hash):
+        is_valid_pwd = check_password(password, employee.company_password_hash) or (employee.company_password_hash == password)
+        if not is_valid_pwd:
             return Response(
                 {'detail': 'Invalid company email or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -356,8 +356,8 @@ class EmployeeForgotPasswordView(APIView):
             }, status=status.HTTP_200_OK)
 
         # Check Employee model for non-admin employees
-        try:
-            employee = Employee.objects.get(company_email__iexact=email)
+        employee = Employee.objects.filter(Q(company_email__iexact=email) | Q(employee_id__iexact=email)).first()
+        if employee:
             if employee.status != 'Active':
                 return Response({'detail': 'This account is inactive. Please contact the administrator.'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -378,10 +378,7 @@ class EmployeeForgotPasswordView(APIView):
                 'message': 'Temporary password has been sent to your registered email.'
             }, status=status.HTTP_200_OK)
 
-        except Employee.DoesNotExist:
-            pass
-
-        return Response({'detail': 'Account with this email does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Account with this email does not exist. Please make sure your account has been added by the administrator.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class EmployeeChangePasswordView(APIView):
@@ -438,7 +435,7 @@ class EmployeeChangePasswordView(APIView):
             return Response({'success': True, 'message': 'Admin password changed successfully.'}, status=status.HTTP_200_OK)
 
         # Check Employee model for non-admin employees
-        employee = Employee.objects.filter(company_email__iexact=email).first()
+        employee = Employee.objects.filter(Q(company_email__iexact=email) | Q(employee_id__iexact=email)).first()
         if employee:
             if employee.is_temporary_password or not current_password:
                 employee.company_password_hash = make_password(new_password)
@@ -446,7 +443,8 @@ class EmployeeChangePasswordView(APIView):
                 employee.temp_password_expiry = None
                 employee.save(update_fields=['company_password_hash', 'is_temporary_password', 'temp_password_expiry'])
             else:
-                if not check_password(current_password, employee.company_password_hash):
+                is_valid_curr = check_password(current_password, employee.company_password_hash) or (employee.company_password_hash == current_password)
+                if not is_valid_curr:
                     return Response({'detail': 'Incorrect current password.'}, status=status.HTTP_400_BAD_REQUEST)
 
                 employee.company_password_hash = make_password(new_password)

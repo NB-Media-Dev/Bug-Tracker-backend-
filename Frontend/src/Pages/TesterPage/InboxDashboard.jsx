@@ -13,7 +13,7 @@ import {
   ArrowUpRight,
   UploadCloud
 } from 'lucide-react';
-import { API_BASE } from '../../lib/api';
+import { API_BASE, authFetch } from '../../lib/api';
 
 function InboxDashboard({ onNavigate }) {
   const [messages, setMessages] = useState([]);
@@ -23,7 +23,7 @@ function InboxDashboard({ onNavigate }) {
 
   const loadSubmissions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/submissions/`);
+      const response = await authFetch('/api/bugs/submissions/');
       if (!response.ok) return;
 
       const data = await response.json();
@@ -65,7 +65,7 @@ function InboxDashboard({ onNavigate }) {
     }));
 
     try {
-      await fetch(`${API_BASE}/api/bugs/submissions/${msgId}/`, {
+      await authFetch(`/api/bugs/submissions/${msgId}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Read" })
@@ -98,7 +98,7 @@ function InboxDashboard({ onNavigate }) {
         
       }
 
-      const response = await fetch(`${API_BASE}/api/bugs/submissions/${msg.id}/`, {
+      const response = await authFetch(`/api/bugs/submissions/${msg.id}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

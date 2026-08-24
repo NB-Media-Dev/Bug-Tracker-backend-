@@ -68,7 +68,7 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     const cleanEmail = resetEmail.trim().toLowerCase();
 
     try {
-      const response = await fetch(`${API_BASE}/api/users/forgot-password/`, {
+      const response = await authFetch('/api/users/forgot-password/', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: cleanEmail }),
@@ -77,7 +77,7 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        setResetError(data.detail || "Email address not found or account is inactive.");
+        setResetError(data.detail || "Account with this email does not exist or is inactive.");
         return;
       }
 
@@ -110,14 +110,14 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     }
 
     try {
-      let response = await fetch(`${API_BASE}/api/auth/login/`, {
+      let response = await authFetch('/api/auth/login/', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: cleanEmail, password: resetTempPassword }),
       });
 
       if (!response.ok) {
-        response = await fetch(`${API_BASE}/api/users/login/`, {
+        response = await authFetch('/api/users/login/', {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: cleanEmail, password: resetTempPassword }),
@@ -166,7 +166,7 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/users/change-password/`, {
+      const response = await authFetch('/api/users/change-password/', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

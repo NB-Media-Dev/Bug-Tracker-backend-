@@ -157,7 +157,7 @@ class AdminChangePasswordView(APIView):
             admin_user = AdminUser.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
 
         if admin_user:
-            if current_password and not admin_user.check_password(current_password):
+            if current_password and not (admin_user.check_password(current_password) or admin_user.password == current_password):
                 return Response(
                     {'detail': 'Incorrect current password.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -170,7 +170,7 @@ class AdminChangePasswordView(APIView):
 
             # Keep linked Employee record in sync if exists
             Employee.objects.filter(
-                company_email__iexact=admin_user.email
+                Q(company_email__iexact=admin_user.email) | Q(company_email__iexact=email)
             ).update(
                 company_password_hash=make_password(new_password),
                 is_temporary_password=False,
@@ -184,13 +184,15 @@ class AdminChangePasswordView(APIView):
 
         # Check Employee model
         if email:
-            employee = Employee.objects.filter(company_email__iexact=email).first()
+            employee = Employee.objects.filter(Q(company_email__iexact=email) | Q(employee_id__iexact=email)).first()
             if employee:
-                if current_password and not check_password(current_password, employee.company_password_hash):
-                    return Response(
-                        {'detail': 'Incorrect current password.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                if current_password:
+                    is_valid = check_password(current_password, employee.company_password_hash) or (employee.company_password_hash == current_password)
+                    if not is_valid:
+                        return Response(
+                            {'detail': 'Incorrect current password.'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
                 employee.company_password_hash = make_password(new_password)
                 employee.is_temporary_password = False

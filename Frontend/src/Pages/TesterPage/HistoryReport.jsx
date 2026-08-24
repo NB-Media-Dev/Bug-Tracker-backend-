@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { History, Eye, FileText, Clock, RefreshCw, FileSpreadsheet, CheckCircle2Icon } from 'lucide-react';
-import { API_BASE } from '../../lib/api';
+import { API_BASE, authFetch } from '../../lib/api';
 import { getProjectAcronym, normalizeBug, getTesterInfo, matchesTester, downloadFile, getStatusBadgeStyle } from '../../lib/utils';
 import StatusFilterSelect from '../../components/shared/StatusFilterSelect';
 import BugDetailModal from '../../components/shared/BugDetailModal';
@@ -15,18 +15,13 @@ function HistoryReport() {
 
   const loadHistoryLogs = async () => {
     const { name: testerName, email: testerEmail, id: testerId } = getTesterInfo();
-
     try {
-      const queryParams = new URLSearchParams();
-      if (testerId) queryParams.append("tester_id", testerId);
-      if (testerEmail) queryParams.append("tester_email", testerEmail);
-      if (testerName) queryParams.append("tester_name", testerName);
-
-      const response = await fetch(`${API_BASE}/api/bugs/?${queryParams.toString()}`);
+      const response = await authFetch('/api/bugs/');
       if (!response.ok) return;
 
       const data = await response.json();
-      const filteredData = data.filter(b => matchesTester(b, testerName, testerEmail, testerId));
+      const allBugsData = Array.isArray(data) ? data : data.results || [];
+      const filteredData = allBugsData.filter(b => matchesTester(b, testerName, testerEmail, testerId));
       
       const rawMapped = filteredData.map(b => normalizeBug(b, { testerName, testerId, testerEmail }));
 

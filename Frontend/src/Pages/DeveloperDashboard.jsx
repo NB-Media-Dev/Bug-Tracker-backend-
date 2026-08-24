@@ -853,9 +853,6 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                         Welcome back, {devName}. Track your active issues, status
                         updates, and project progress in one view.
                       </p>
-                      {devEmail ? (
-                        <p className="text-sm text-slate-500 mt-2">{devEmail}</p>
-                      ) : null}
                     </div>
                   </div>
 
