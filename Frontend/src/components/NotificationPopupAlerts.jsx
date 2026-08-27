@@ -78,11 +78,23 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
         const matchEmail =
           empEmail &&
           (n.recipient_email || "").toLowerCase() === empEmail.toLowerCase();
+        const matchName =
+          user?.name &&
+          (n.recipient_name || "").toLowerCase().includes(user.name.toLowerCase());
 
         if (roleLower === "cto") {
           return matchRole || matchEmail || matchId;
         }
-        return matchEmail || matchId || (matchRole && !n.recipient_id);
+
+        const recipientId = (n.recipient_id || n.recipientId || "").trim();
+        const recipientEmail = (n.recipient_email || "").trim();
+        const recipientName = (n.recipient_name || "").trim();
+
+        if (recipientId || recipientEmail || recipientName) {
+          return matchEmail || matchId || matchName;
+        }
+
+        return matchRole;
       });
 
       setActiveAlerts(unreadAlerts.slice(0, 3));
@@ -250,7 +262,7 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
             className="pointer-events-auto relative rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden transition-all duration-200"
           >
             {/* Left accent bar */}
-            <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${config.accentBar}`} />
+            {/* <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${config.accentBar}`} /> */}
 
             <div className="p-4 pl-5">
               {/* Header */}

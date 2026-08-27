@@ -52,7 +52,8 @@ function DeveloperHistory({ developer }) {
     const rawCombined = [
       ...devSentSubmissions.map((s) => {
         const startDate = formatDateStandard(s.date_submitted || s.date);
-        const endDate = formatDateStandard(s.date_submitted || s.date);
+        const isAccepted = Boolean(s.claimedBy || s.claimed_by || s.status === 'Accepted' || s.status === 'Testing');
+        const acceptDate = isAccepted ? formatDateStandard(s.date_submitted || s.date) : "Pending";
         return {
           rawId: s.id,
           module: s.projectName || s.project_name || "General",
@@ -60,7 +61,8 @@ function DeveloperHistory({ developer }) {
             s.subject || `${s.projectName || s.project_name} Build Submission`,
           description: `Project Link: ${s.projectLink || s.project_link || s.zipFileName || "No link"}`,
           assignedOn: startDate,
-          dueDate: endDate,
+          dueDate: acceptDate,
+          acceptDate: acceptDate,
           testerName: s.claimedBy || s.claimed_by || "Unclaimed",
           testerId: s.claimedById || s.claimed_by_id || "",
           devStatus: "Sent Build",
@@ -76,7 +78,7 @@ function DeveloperHistory({ developer }) {
         const startDate = formatDateStandard(
           b.assignedOn || b.assigned_on || b.created_at,
         );
-        const endDate = formatDateStandard(
+        const acceptDate = formatDateStandard(
           b.dueDate || b.due_date || b.updated_at || b.assigned_on || b.created_at,
         );
         return {
@@ -85,7 +87,8 @@ function DeveloperHistory({ developer }) {
           title: b.title,
           description: b.description,
           assignedOn: startDate,
-          dueDate: endDate,
+          dueDate: acceptDate,
+          acceptDate: acceptDate,
           testerName: b.testerName || "Kamatchi",
           devStatus: b.devStatus || "Resolved",
           testerStatus: b.testerStatus || b.status || "Closed",
@@ -186,7 +189,7 @@ function DeveloperHistory({ developer }) {
       "Assigned Developer",
       "Developer ID",
       "Start Date",
-      "End Date",
+      "Accept Date",
       "Tester Status",
       "Developer Status",
     ];
@@ -311,7 +314,7 @@ function DeveloperHistory({ developer }) {
                 <th className="p-4">Project Name</th>
                 <th className="p-4">Tester Name</th>
                 <th className="p-4 w-28">Start Date</th>
-                <th className="p-4 w-28">End Date</th>
+                <th className="p-4 w-28">Accept Date</th>
                 <th className="p-4 w-32">Developer Status</th>
                 <th className="p-4 w-32">Tester Status</th>
                 <th className="p-4 w-32 text-center">Action</th>
@@ -445,7 +448,7 @@ function DeveloperHistory({ developer }) {
                   <p className="text-gray-800 mt-1.5 font-medium">
                     Tester:{" "}
                     <strong className="text-blue-700 uppercase">
-                      {viewingHistory.testerName || "Kamatchi"}
+                      {viewingHistory.testerName || "none"}
                     </strong>
                   </p>
                   <p className="text-gray-800 mt-1 font-medium">
@@ -487,10 +490,10 @@ function DeveloperHistory({ developer }) {
                 </div>
                 <div>
                   <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                    End Date
+                    Accept Date
                   </h4>
                   <p className="text-gray-900 font-mono mt-1 font-semibold">
-                    {viewingHistory.dueDate || "N/A"}
+                    {viewingHistory.acceptDate || viewingHistory.dueDate || "Pending"}
                   </p>
                 </div>
               </div>

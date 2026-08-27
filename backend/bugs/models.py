@@ -5,7 +5,6 @@ class BugReport(models.Model):
     bug_id = models.CharField(max_length=20)
     title = models.CharField(max_length=300)
     description = models.TextField()
- 
     severity = models.CharField(max_length=20)
     bug_type = models.CharField(max_length=30)
     status = models.CharField(max_length=20, default='Open')

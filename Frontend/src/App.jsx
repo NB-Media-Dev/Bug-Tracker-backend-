@@ -12,6 +12,7 @@ import UserHeaderPanel from "./components/UserHeaderPanel";
 import ProfileModal from "./components/ProfileModal";
 import MandatoryChangePassword from "./Pages/MandatoryChangePassword";
 import NotificationPopupAlerts from "./components/NotificationPopupAlerts";
+import LogoutConfirmationModal from "./components/LogoutConfirmationModal";
 
 import { clearDumpStorage } from "./lib/clearDumpStorage";
 import { getSavedTheme, applyTheme } from "./lib/theme";
@@ -25,6 +26,7 @@ function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const stored = getStoredAuth();
 
@@ -238,6 +240,8 @@ function App() {
   const currentRoleStr = (authUser?.role || authRole || localStorage.getItem("admin_portal_role") || "admin").toString().toLowerCase();
   const isCTO = currentRoleStr === "cto";
 
+  const triggerLogoutModal = () => setShowLogoutModal(true);
+
   const renderPage = () => {
     if (!isCTO) {
       // Admin role only gets User Management page (with Add User and Actions enabled)
@@ -246,7 +250,7 @@ function App() {
     // CTO role gets Dashboard, Monitor, and User Management (Read-Only)
     switch (currentPath) {
       case "/":
-        return <Dasboard onNavigate={navigate} onLogout={handleLogout} />;
+        return <Dasboard onNavigate={navigate} onLogout={triggerLogoutModal} />;
       case "/monitor":
         return <Monitor />;
       case "/user-management":
@@ -270,23 +274,48 @@ function App() {
 
   if (getRequirePasswordChange() && authUser) {
     return (
-      <MandatoryChangePassword
-        user={authUser}
-        onPasswordChanged={() => {
-          localStorage.removeItem("require_password_change");
-          window.location.reload();
-        }}
-        onLogout={handleLogout}
-      />
+      <>
+        <MandatoryChangePassword
+          user={authUser}
+          onPasswordChanged={() => {
+            localStorage.removeItem("require_password_change");
+            window.location.reload();
+          }}
+          onLogout={triggerLogoutModal}
+        />
+        <LogoutConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      </>
     );
   }
 
   if (authRole === "developer") {
-    return <DeveloperDashboard developer={authUser} onLogout={handleLogout} />;
+    return (
+      <>
+        <DeveloperDashboard developer={authUser} onLogout={triggerLogoutModal} />
+        <LogoutConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      </>
+    );
   }
 
   if (authRole === "tester") {
-    return <TesterDashboard tester={authUser} onLogout={handleLogout} />;
+    return (
+      <>
+        <TesterDashboard tester={authUser} onLogout={triggerLogoutModal} />
+        <LogoutConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      </>
+    );
   }
 
   const matchesNotifDate = (n) => {
@@ -316,7 +345,7 @@ function App() {
         setIsCollapsed={setIsCollapsed}
         currentPath={currentPath}
         onNavigate={navigate}
-        onLogout={handleLogout}
+        onLogout={triggerLogoutModal}
         user={authUser}
         userRole={isCTO ? "cto" : "admin"}
       />
@@ -355,7 +384,7 @@ function App() {
               }}
               notificationCount={adminNotifications.length}
               onBellClick={() => isCTO && setShowNotifDropdown(!showNotifDropdown)}
-              onLogout={handleLogout}
+              onLogout={triggerLogoutModal}
               onProfileClick={() => setShowProfileModal(true)}
               subtitle={adminEmail}
             />
@@ -507,6 +536,12 @@ function App() {
           {renderPage()}
         </main>
       </div>
+
+      <LogoutConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
     </div>
   );
 }

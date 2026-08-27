@@ -15,6 +15,7 @@ import ProfileModal from "../components/ProfileModal";
 import UnsavedBugWarningModal from "../components/UnsavedBugWarningModal";
 import { saveStoredAvatar, getStoredAvatar } from "../lib/avatar";
 import { API_BASE, authFetch } from "../lib/api";
+import { formatNotificationMessage } from "../lib/utils";
 
 function Testerdashboard({ tester: propTester, onLogout }) {
   const [testUser, setTestUser] = useState(() => {
@@ -133,7 +134,10 @@ function Testerdashboard({ tester: propTester, onLogout }) {
     }
   };
 
-  const getButtonText = (isBuild, isValidHttpUrl) => {
+  const getButtonText = (isBuild, isValidHttpUrl, isAccepted) => {
+    if (isAccepted) {
+      return "View Bugs";
+    }
     if (isBuild) {
       return !isValidHttpUrl ? "Start Testing APK" : "Start Testing";
     }
@@ -157,111 +161,53 @@ function Testerdashboard({ tester: propTester, onLogout }) {
 
   const loadNotifications = async () => {
     let apiSubmissions = [];
-    let apiNotifs = [];
     const credentials = getTesterCredentials();
 
     try {
-      const [subsRes, notifsRes] = await Promise.all([
-        authFetch('/api/bugs/submissions/'),
-        authFetch(
-          `/api/bugs/notifications/?recipient_id=${credentials.id}`,
-        ),
-      ]);
+      const subsRes = await authFetch('/api/bugs/submissions/');
       if (subsRes.ok) apiSubmissions = await subsRes.json();
-      if (notifsRes.ok) apiNotifs = await notifsRes.json();
     } catch (e) {
       console.error("Error loading notifications from API", e);
     }
 
-    const subNotifs = apiSubmissions.map((s) => ({
-      id: `SUB-${s.id}`,
-      projectName: s.projectName || s.project_name,
-      developerName: s.developerName || s.developer_name,
-      projectLink: s.projectLink || s.project_link,
-      zipFileName: s.zipFileName || s.zip_file_name,
-      subject: s.subject || "",
-      rawTimestamp:
-        s.date_submitted || s.created_at || new Date().toISOString(),
-      date: s.date_submitted
-        ? new Date(s.date_submitted).toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "short",
-        }) +
-        ", " +
-        new Date(s.date_submitted).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-        : s.date || "Just now",
-      type: "build_submission",
-      message: `Developer ${s.developerName || s.developer_name} submitted project build: "${s.projectName || s.project_name}"`,
-    }));
+    const subNotifs = (Array.isArray(apiSubmissions) ? apiSubmissions : []).map((s) => {
+      const rawDev = (s.developerName || s.developer_name || "").split("(")[0].trim();
+      const devId = s.developer_id || s.developerId || "DEV001";
+      const devLabel = rawDev ? `${rawDev} (${devId})` : devId;
+      const isAccepted = s.status === "Accepted" || s.status === "Testing" || Boolean(s.claimed_by || s.claimedBy);
 
-    const generalNotifs = apiNotifs
-      .filter((n) => {
-        const roleMatch = (n.recipient_role || "").toLowerCase() === "tester";
-        if (!roleMatch) return false;
+      return {
+        id: `SUB-${s.id}`,
+        rawSubmissionId: s.id,
+        projectName: s.projectName || s.project_name,
+        developerName: s.developerName || s.developer_name,
+        projectLink: s.projectLink || s.project_link,
+        zipFileName: s.zipFileName || s.zip_file_name,
+        subject: s.subject || "",
+        isAccepted,
+        rawTimestamp:
+          s.date_submitted || s.created_at || new Date().toISOString(),
+        date: s.date_submitted
+          ? new Date(s.date_submitted).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+          }) +
+          ", " +
+          new Date(s.date_submitted).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+          : s.date || "Just now",
+        type: "build_submission",
+        message: `${devLabel} submitted project build: "${s.projectName || s.project_name}"`,
+      };
+    });
 
-        const cleanCredName = (credentials.name || "").split("(")[0].trim().toLowerCase();
-        const cleanRecipName = (n.recipient_name || "").split("(")[0].trim().toLowerCase();
-
-        const idMatch =
-          credentials.id &&
-          n.recipient_id &&
-          n.recipient_id.trim().toLowerCase() ===
-          credentials.id.trim().toLowerCase();
-        const emailMatch =
-          credentials.email &&
-          n.recipient_email &&
-          n.recipient_email.trim().toLowerCase() ===
-          credentials.email.trim().toLowerCase();
-        const nameMatch =
-          Boolean(cleanCredName) &&
-          Boolean(cleanRecipName) &&
-          (cleanCredName.includes(cleanRecipName) || cleanRecipName.includes(cleanCredName));
-
-        return (
-          idMatch ||
-          emailMatch ||
-          nameMatch ||
-          (!n.recipient_id && !n.recipient_email)
-        );
-      })
-      .map((n) => {
-        let extractedProject = "Bug Update";
-        const match = (n.message || "").match(/\b([A-Z0-9]+)-\d+\b/);
-        if (match) {
-          extractedProject = `${match[1]} Project`;
-        }
-        return {
-          id: `NOTIF-${n.id}`,
-          projectName: extractedProject,
-          developerName: "Developer",
-          projectLink: n.projectLink || n.project_link || "",
-          subject: n.subject || "",
-          rawTimestamp: n.created_at || new Date().toISOString(),
-          date: n.created_at
-            ? new Date(n.created_at).toLocaleDateString("en-US", {
-              day: "numeric",
-              month: "short",
-            }) +
-            ", " +
-            new Date(n.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-            : "Just now",
-          type: n.notification_type || "bug_updated",
-          message: n.message,
-        };
-      });
-
-    const allNotifs = [...subNotifs, ...generalNotifs];
-    allNotifs.sort(
+    subNotifs.sort(
       (a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp),
     );
 
-    setNotifications(allNotifs);
+    setNotifications(subNotifs);
   };
 
   useEffect(() => {
@@ -274,40 +220,20 @@ function Testerdashboard({ tester: propTester, onLogout }) {
     };
   }, []);
 
-  const acceptBuildSubmission = async (notif, testerName, testerId) => {
-    const rawId = notif.id.replace("SUB-", "");
-    try {
-      const response = await authFetch(`/api/bugs/submissions/${rawId}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          claimedBy: testerName || "tester",
-          claimedById: testerId || "TS001",
-          status: "Testing",
-        }),
-      });
-      if (response.ok) {
-        alert(`Project build "${notif.projectName || notif.project_name}" has been accepted and is now in testing!`);
-        loadNotifications();
-      } else {
-        alert("Failed to accept project build for testing.");
-      }
-    } catch (err) {
-      console.error("Error accepting project build", err);
-      alert("Error accepting project build.");
-    }
-  };
-
-  const handleStartTesting = async (notif) => {
-    const credentials = getTesterCredentials();
-
+  const handleStartTesting = (notif) => {
     if (!readNotifIds.includes(notif.id)) {
       setReadNotifIds((prev) => [...prev, notif.id]);
     }
 
-    if (notif.type === "build_submission") {
-      await acceptBuildSubmission(notif, credentials.name, credentials.id);
+    const projName = notif.projectName || notif.project_name || "General";
+    localStorage.setItem("selected_project_name", projName.toUpperCase());
+
+    if (notif.isAccepted) {
+      navigate("/tester/bugreport");
     } else {
+      if (notif.rawSubmissionId) {
+        localStorage.setItem("inbox_active_build_id", notif.rawSubmissionId);
+      }
       navigate("/tester/inbox");
     }
     setShowNotifDropdown(false);
@@ -474,7 +400,6 @@ function Testerdashboard({ tester: propTester, onLogout }) {
                       </button>
                     </div>
                   </div>
-
                   <div className="max-h-96 overflow-y-auto text-xs divide-y divide-gray-100 dark:divide-slate-800">
                     <div className="bg-blue-50/10 dark:bg-slate-800/10">
                       <div className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800/40 text-[10px] font-bold text-blue-600 uppercase tracking-wide">
@@ -504,7 +429,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
                               key={n.id}
                               className="p-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors space-y-2 border-b border-gray-100 dark:border-slate-800"
                             >
-                              <div className="flex items-center justify-between">
+                              {/* <div className="flex items-center justify-between">
                                 <span className="font-extrabold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
                                   {isBuild ? (
                                     <FileArchive size={14} className="text-blue-600 shrink-0" />
@@ -514,7 +439,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
                                   {n.projectName || n.project_name}
                                 </span>
                                 <span className="text-[10px] text-gray-400 font-mono">{n.date || "Just now"}</span>
-                              </div>
+                              </div> */}
 
                               <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
                                 {isBuild ? (
@@ -526,7 +451,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
                                     )}
                                   </>
                                 ) : (
-                                  n.message
+                                  formatNotificationMessage(n.message, n.projectName || n.project_name)
                                 )}
                               </p>
 

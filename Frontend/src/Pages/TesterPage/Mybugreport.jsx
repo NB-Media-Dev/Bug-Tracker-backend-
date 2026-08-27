@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, matchesTester, escapeCSV, formatDateStandard } from "../../lib/utils";
+import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, matchesTester, matchesSubmissionTester, escapeCSV, formatDateStandard } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function Mybugreport({ onNavigate }) {
@@ -717,39 +717,43 @@ function Mybugreport({ onNavigate }) {
     return acc;
   }, {});
 
+  const allAcceptedSubmissions = (acceptedSubmissions || []).filter(
+    (s) => s.status === 'Accepted' || Boolean(s.claimedBy || s.claimed_by)
+  );
+
   const acceptedProjectNamesSet = new Set(
-    (acceptedSubmissions || [])
-      .filter((s) => s.status === 'Accepted' || Boolean(s.claimedBy))
+    allAcceptedSubmissions
       .map((s) => (s.projectName || s.project_name || '').trim().toUpperCase())
       .filter(Boolean)
   );
 
-  (acceptedSubmissions || [])
-    .filter((s) => s.status === 'Accepted' || Boolean(s.claimedBy))
-    .forEach((sub) => {
-      const projName = (sub.projectName || sub.project_name || "").trim().toUpperCase();
-      if (!projName) return;
+  allAcceptedSubmissions.forEach((sub) => {
+    const projName = (sub.projectName || sub.project_name || "").trim().toUpperCase();
+    if (!projName) return;
 
-      if (projectFilter && projName !== projectFilter.trim().toUpperCase()) return;
+    if (projectFilter && projName !== projectFilter.trim().toUpperCase()) return;
 
-      const devName = sub.developer_name || sub.developerName || sub.developer || "Unassigned";
-      const devId = sub.developer_id || sub.developerId || "DEV001";
-      const groupKey = `${projName}||${devId.trim().toUpperCase()}`;
+    const devName = sub.developer_name || sub.developerName || sub.developer || "Unassigned";
+    const devId = sub.developer_id || sub.developerId || "DEV001";
+    const groupKey = `${projName}||${devId.trim().toUpperCase()}`;
 
-      if (!groupedProjects[groupKey]) {
-        groupedProjects[groupKey] = {
-          projectName: projName,
-          developer: devName,
-          developerId: devId,
-          bugs: [],
-          isAcceptedBuild: true,
-          version: sub.version || 'v0.1',
-        };
-      }
-    });
+    if (!groupedProjects[groupKey]) {
+      groupedProjects[groupKey] = {
+        projectName: projName,
+        developer: devName,
+        developerId: devId,
+        bugs: [],
+        isAcceptedBuild: true,
+        version: sub.version || 'v0.1',
+      };
+    }
+  });
 
   Object.keys(groupedProjects).forEach((key) => {
     const proj = groupedProjects[key];
+    if (proj.bugs && proj.bugs.length > 0) {
+      return;
+    }
     const isAccepted = acceptedProjectNamesSet.has(proj.projectName.trim().toUpperCase());
     if (!isAccepted) {
       delete groupedProjects[key];
@@ -954,7 +958,7 @@ function Mybugreport({ onNavigate }) {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition-all cursor-pointer"
                         title={`Create new bug report for ${projName}`}
                       >
-                        <Plus size={14} className="text-blue-600" /> + Add New Bug
+                        <Plus size={15} className="text-red-600" />Add New Bug
                       </button>
 
                       <button

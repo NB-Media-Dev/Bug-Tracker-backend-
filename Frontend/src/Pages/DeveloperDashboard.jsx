@@ -6,8 +6,8 @@ import DeveloperSendProject from "./DeveloperPage/DeveloperSendProject";
 import ThemeSelector from "../components/ThemeSelector";
 import DeveloperReminderModal from "../components/DeveloperReminderModal";
 import { getSavedTheme, applyTheme } from "../lib/theme";
-import { API_BASE } from "../lib/api";
-import { formatBugId, formatNotificationMessage } from "../lib/utils";
+import { API_BASE, authFetch } from "../lib/api";
+import { formatBugId, formatNotificationMessage, getDeveloperInfo, matchesDeveloper } from "../lib/utils";
 
 import {
   UserCheck,
@@ -109,20 +109,17 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   const [recentPage, setRecentPage] = useState(1);
   const recentPerPage = 4;
 
-  const devName = developer?.name || "Vasanthan";
-  const devId =
-    developer?.employee_id ||
-    (developer?.id ? `DEV${String(developer.id).padStart(3, "0")}` : "DEV001");
-  const devEmail = developer?.company_email || "";
+  const devInfo = getDeveloperInfo(developer);
+  const devName = devInfo.name;
+  const devId = devInfo.id;
+  const devEmail = devInfo.email;
 
   const getDueBugsForDeveloper = (allBugs) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const filtered = allBugs.filter((b) => {
-      const matchesDev =
-        (b.developerId && devId && b.developerId.toLowerCase().includes(devId.toLowerCase())) ||
-        (b.developer && devName && b.developer.toLowerCase().includes(devName.toLowerCase()));
+      const matchesDev = matchesDeveloper(b, devName, devEmail, devId);
       if (!matchesDev) return false;
 
       const status = (b.devStatus || b.status || "").toLowerCase();
@@ -225,56 +222,55 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   };
 
   const matchRecipient = (n, devId, devEmail, devName) => {
-    if (n?.recipient_role !== "Developer") return false;
+    const roleMatch = (n?.recipient_role || "").toLowerCase() === "developer" || !n?.recipient_role;
+    if (!roleMatch) return false;
 
     const cleanDevName = (devName || "").split("(")[0].trim().toLowerCase();
     const cleanRecipName = (n.recipient_name || "").split("(")[0].trim().toLowerCase();
 
-    const matchId = Boolean(devId) && n.recipient_id?.toUpperCase() === devId.toUpperCase();
-    const matchEmail = Boolean(devEmail) && n.recipient_email?.toLowerCase() === devEmail.toLowerCase();
+    const matchId = Boolean(devId) && (n.recipient_id || "").toLowerCase().includes(devId.toLowerCase());
+    const matchEmail = Boolean(devEmail) && (n.recipient_email || "").toLowerCase() === devEmail.toLowerCase();
     const matchName = Boolean(cleanDevName) && Boolean(cleanRecipName) && (
       cleanDevName.includes(cleanRecipName) || cleanRecipName.includes(cleanDevName)
     );
 
-    return Boolean(matchId || matchEmail || matchName);
+    return Boolean(matchId || matchEmail || matchName || (!devId && !devEmail && !devName));
   };
 
   const filterNotificationType = (n) => {
-    if (n.notification_type === "bug_assigned") return false;
     return true;
   };
 
   const fetchAPIData = async () => {
     const [resNotifs, resBugs] = await Promise.all([
-      fetch(
+      authFetch(
         `${API_BASE}/api/bugs/notifications/?recipient_id=${devId}&role=Developer`,
       ),
-      fetch(`${API_BASE}/api/bugs/`),
+      authFetch(`${API_BASE}/api/bugs/`),
     ]);
 
     let apiNotifs = [];
     if (resNotifs.ok) {
       const data = await resNotifs.json();
-      apiNotifs = Array.isArray(data)
-        ? data
-          .filter((n) => matchRecipient(n, devId, devEmail, devName))
-          .filter(filterNotificationType)
-          .map((n) => ({
-            id: n.id,
-            message: n.message,
-            project_name: n.project_name || n.bug_report?.module || n.module || "General",
-            rawTimestamp: n.created_at || new Date().toISOString(),
-            timestamp: formatTimestamp(n.created_at),
-            read: n.is_read || false,
-            badge: getBadgeType(n.notification_type, n.message),
-          }))
-        : [];
+      const rawList = Array.isArray(data) ? data : data.results || [];
+      apiNotifs = rawList
+        .filter((n) => matchRecipient(n, devId, devEmail, devName))
+        .filter(filterNotificationType)
+        .map((n) => ({
+          id: n.id,
+          message: n.message,
+          project_name: n.project_name || n.bug_report?.module || n.module || "General",
+          rawTimestamp: n.created_at || new Date().toISOString(),
+          timestamp: formatTimestamp(n.created_at),
+          read: n.is_read || false,
+          badge: getBadgeType(n.notification_type, n.message),
+        }));
     }
 
     let apiBugs = [];
     if (resBugs.ok) {
       const bugJson = await resBugs.json();
-      apiBugs = Array.isArray(bugJson) ? bugJson : [];
+      apiBugs = Array.isArray(bugJson) ? bugJson : bugJson.results || [];
     }
 
     return { apiNotifs, apiBugs };
@@ -310,12 +306,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   const buildGroupedNotifications = (apiBugs) => {
     const myOpenBugs = apiBugs.filter((b) => {
       if (b?.status !== "Open") return false;
-      const bDevId = b.developerId || b.developer_id;
-      const bDevName = b.developerName || b.developer_name;
-      return (
-        bDevId?.toUpperCase() === devId?.toUpperCase() ||
-        bDevName?.toLowerCase()?.includes(devName?.toLowerCase() || "")
-      );
+      return matchesDeveloper(b, devName, devEmail, devId);
     });
 
     const bugsByProject = {};
@@ -362,7 +353,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
       apiNotifs = result.apiNotifs;
       apiBugs = result.apiBugs;
     } catch (e) {
-      console.error("Error loading notifications from API", e);
+      console.warn("Backend API is offline or unreachable:", e.message);
     }
 
     const localNotifs = getLocalNotifications();
@@ -395,10 +386,10 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
 
   const loadBugs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/`);
+      const response = await authFetch(`${API_BASE}/api/bugs/`);
       if (response.ok) {
         const data = await response.json();
-        const list = Array.isArray(data) ? data : [];
+        const list = Array.isArray(data) ? data : data.results || [];
         const projectGroups = {};
         list.forEach((b) => {
           const mod = (b.module || "General").trim().toUpperCase();
@@ -424,7 +415,10 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
               testerStatus: b.status || "Open",
               devStatus: b.devStatus || b.dev_status || "In Progress",
               developer: b.developerName || b.developer_name || "Unassigned",
-              developerId: b.developerId || "N/A",
+              developerName: b.developerName || b.developer_name || "Unassigned",
+              developerId: b.developerId || b.developer_id || "N/A",
+              developer_id: b.developer_id || b.developerId || "N/A",
+              developer_name: b.developer_name || b.developerName || "Unassigned",
               testerName: b.testerName || b.tester_name || "Tester",
               Assgined_Date:
                 b.assignedOn ||
@@ -440,7 +434,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
         return;
       }
     } catch (e) {
-      console.error("Error loading bugs from API", e);
+      console.warn("Backend API is offline or unreachable:", e.message);
     }
   };
 
@@ -493,27 +487,23 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
     Math.ceil(filteredNotifications.length / recentPerPage),
   );
 
-  const assignedBugs = bugs.filter(
-    (b) =>
-      (b.developerId &&
-        devId &&
-        b.developerId.toLowerCase().includes(devId.toLowerCase())) ||
-      (b.developer &&
-        devName &&
-        b.developer.toLowerCase().includes(devName.toLowerCase())) ||
-      (!b.developerId && (!b.developer || b.developer === "Unassigned")),
+  const assignedBugs = bugs.filter((b) =>
+    matchesDeveloper(b, devName, devEmail, devId),
   );
 
   const totalAssigned = assignedBugs.length;
-  const inProgressCount = assignedBugs.filter(
-    (b) => b.devStatus === "In Progress",
-  ).length;
-  const pendingCount = assignedBugs.filter(
-    (b) => b.devStatus === "Pending",
-  ).length;
-  const resolvedCount = assignedBugs.filter(
-    (b) => b.devStatus === "Resolved",
-  ).length;
+  const inProgressCount = assignedBugs.filter((b) => {
+    const st = (b.devStatus || b.status || "").toString().toLowerCase();
+    return st === "in progress" || st === "open";
+  }).length;
+  const pendingCount = assignedBugs.filter((b) => {
+    const st = (b.devStatus || b.status || "").toString().toLowerCase();
+    return st === "pending";
+  }).length;
+  const resolvedCount = assignedBugs.filter((b) => {
+    const st = (b.devStatus || b.status || "").toString().toLowerCase();
+    return st === "resolved" || st === "closed" || st === "fixed";
+  }).length;
 
 
   const projectSummary = Object.entries(
@@ -830,7 +820,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
               </div>
             )}
 
-            {currentPath === "/developer/dashboard" && (
+            {(currentPath === "/developer/dashboard" || currentPath === "/" || !["/developer/sendproject", "/developer/myreport", "/developer/history", "/developer/profile", "/developer/help"].includes(currentPath)) && (
               <div className="max-w-7xl mx-auto space-y-6">
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">

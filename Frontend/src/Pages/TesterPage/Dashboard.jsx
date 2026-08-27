@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { getTesterInfo, matchesTester } from "../../lib/utils";
+import { getTesterInfo, matchesTester, matchesSubmissionTester } from "../../lib/utils";
 
 function Dashboard({ onNavigate }) {
   const tester_user = JSON.parse(localStorage.getItem("tester_user")) || { name: "QA Tester" };
@@ -74,7 +74,12 @@ function Dashboard({ onNavigate }) {
     };
   }, []);
 
-  const visibleBuilds = buildNotifications;
+  const { name: currentTesterName, email: currentTesterEmail, id: currentTesterId } = getTesterInfo();
+  const visibleBuilds = buildNotifications.filter((n) => {
+    const isClaimedBySomeone = Boolean(n.claimedBy || n.claimed_by || n.claimedById || n.claimed_by_id);
+    if (!isClaimedBySomeone) return true;
+    return matchesSubmissionTester(n, currentTesterName, currentTesterEmail, currentTesterId);
+  });
   const isNew = (n) => !readNotifIds.includes(n.id);
   const newNotifications = visibleBuilds.filter(isNew);
   const oldNotifications = visibleBuilds.filter((n) => !isNew(n));
@@ -171,24 +176,60 @@ function Dashboard({ onNavigate }) {
     }
   };
 
-  const totalLogged = reportedBugs.length;
-  const resolvedCount = reportedBugs.filter(
+  const myAcceptedSubmissions = (buildNotifications || []).filter(
+    (sub) =>
+      (sub.status === 'Accepted' || Boolean(sub.claimedBy || sub.claimed_by)) &&
+      matchesSubmissionTester(sub, currentTesterName, currentTesterEmail, currentTesterId)
+  );
+
+  const myAcceptedProjectKeys = new Set(
+    myAcceptedSubmissions
+      .map((s) => (s.projectName || s.project_name || "").toString().trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  const myBugsList = reportedBugs.filter((b) => {
+    const key = (b.projectName || b.project_name || b.module || "General").toString().trim().toUpperCase();
+    return matchesTester(b, currentTesterName, currentTesterEmail, currentTesterId) || myAcceptedProjectKeys.has(key);
+  });
+
+  const totalLogged = myBugsList.length;
+  const resolvedCount = myBugsList.filter(
     (b) => b.status === "Resolved" || b.status === "Closed" || b.status === "Not Fixed"
   ).length;
-  const pendingCount = reportedBugs.filter(
+  const pendingCount = myBugsList.filter(
     (b) => b.status === "Pending" || b.status === "Open" || b.status === "In Progress" || !b.status
   ).length;
 
-  const projectMap = reportedBugs.reduce((map, b) => {
-    const key = (b.projectName || b.project_name || b.module || "General").toString();
-    if (!map[key]) map[key] = { name: key, open: 0, pending: 0, resolved: 0, total: 0 };
-    const status = (b.status || "").toString();
-    map[key].total += 1;
-    if (status === "Resolved" || status === "Closed" || status === "Not Fixed") map[key].resolved += 1;
-    else if (status === "Pending") map[key].pending += 1;
-    else map[key].open += 1;
-    return map;
-  }, {});
+  const projectMap = {};
+
+  myAcceptedSubmissions.forEach((sub) => {
+    const rawName = (sub.projectName || sub.project_name || "General").toString().trim();
+    const key = rawName.toUpperCase();
+    if (!projectMap[key]) {
+      projectMap[key] = { name: rawName, open: 0, pending: 0, resolved: 0, total: 0 };
+    }
+  });
+
+  myBugsList.forEach((b) => {
+    const rawName = (b.projectName || b.project_name || b.module || "General").toString().trim();
+    const key = rawName.toUpperCase();
+
+    if (myAcceptedProjectKeys.has(key)) {
+      if (!projectMap[key]) {
+        projectMap[key] = { name: rawName, open: 0, pending: 0, resolved: 0, total: 0 };
+      }
+      const status = (b.status || "").toString();
+      projectMap[key].total += 1;
+      if (status === "Resolved" || status === "Closed" || status === "Not Fixed") {
+        projectMap[key].resolved += 1;
+      } else if (status === "Pending") {
+        projectMap[key].pending += 1;
+      } else {
+        projectMap[key].open += 1;
+      }
+    }
+  });
 
   const projectList = Object.values(projectMap).sort((a, b) => b.total - a.total);
   const activeProjects = projectList.length;
@@ -241,9 +282,9 @@ function Dashboard({ onNavigate }) {
       <div className="pt-1 flex items-center justify-end">
         <button
           onClick={() => handleStartTesting(build)}
-          className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded shadow-2xs transition-all cursor-pointer"
+          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-2xs transition-all cursor-pointer"
         >
-          Start Testing
+          View
         </button>
       </div>
     </div>

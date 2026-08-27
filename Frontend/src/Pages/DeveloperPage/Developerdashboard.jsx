@@ -5,7 +5,7 @@ import {
   Download,
 } from 'lucide-react';
 import { API_BASE, authFetch } from '../../lib/api';
-import { formatBugId } from '../../lib/utils';
+import { formatBugId, getDeveloperInfo, matchesDeveloper } from '../../lib/utils';
 
 function DeveloperDashboard({ onNavigate }) {
   const [developerName, setDeveloperName] = useState('Unassigned');
@@ -26,29 +26,23 @@ function DeveloperDashboard({ onNavigate }) {
   const [statusFilter, setStatusFilter] = useState('All');
 
   useEffect(() => {
-    const storedDeveloper = JSON.parse(localStorage.getItem("developer_user") || "{}");
-    if (storedDeveloper?.name) {
-      setDeveloperName(storedDeveloper.name);
-    } else {
-      setDeveloperName(localStorage.getItem("developer_name") || "Unassigned");
-    }
-    if (storedDeveloper?.employee_id) {
-      setDeveloperId(storedDeveloper.employee_id);
-    } else {
-      setDeveloperId(localStorage.getItem("developer_id") || "N/A");
-    }
+    const info = getDeveloperInfo();
+    if (info.name) setDeveloperName(info.name);
+    if (info.id) setDeveloperId(info.id);
 
     loadBugs();
   }, []);
 
   const loadBugs = async () => {
     try {
-      const devId = localStorage.getItem("developer_id") || localStorage.getItem("developer_employee_id") || "DEV001";
+      const devInfo = getDeveloperInfo();
       const response = await authFetch(`${API_BASE}/api/bugs/`);
       if (response.ok) {
         const data = await response.json();
-        const filtered = data
-          .map(b => ({
+        const rawList = Array.isArray(data) ? data : data.results || [];
+        const filtered = rawList
+          .filter((b) => matchesDeveloper(b, devInfo.name, devInfo.email, devInfo.id))
+          .map((b) => ({
             id: b.id,
             bugId: formatBugId(b),
             title: b.title,
@@ -69,8 +63,7 @@ function DeveloperDashboard({ onNavigate }) {
             module: b.module || 'General',
             type: "bug_report",
             files: b.files || []
-          }))
-          .filter(b => b.developerId === devId || b.developer === developerName);
+          }));
 
         setAssignedBugs(filtered);
         setOpenBugs(filtered.filter(b => b.status === 'Open'));

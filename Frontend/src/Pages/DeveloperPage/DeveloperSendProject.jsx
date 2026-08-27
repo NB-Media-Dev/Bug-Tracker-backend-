@@ -7,7 +7,7 @@ import { API_BASE, authFetch } from '../../lib/api';
 function DeveloperSendProject({ developer }) {
   const devName = developer?.name || 'Vasanthan';
   const devId = developer?.employee_id || (developer?.id ? `DEV${String(developer.id).padStart(3, '0')}` : 'DEV001');
-  const fullDevName = `${devName} (${devId})`;
+  const fullDevName = `${devName}`;
 
 
   const [projectName, setProjectName] = useState('');
@@ -20,11 +20,38 @@ function DeveloperSendProject({ developer }) {
   const [successMessage, setSuccessMessage] = useState('');
   const [duplicateError, setDuplicateError] = useState('');
 
-  const createBuildSubmissionId = (projName, dId) => {
-    const prefix = getProjectPrefix(projName);
-    const devSuffix = dId ? dId.replace(/[^a-zA-Z0-9]/g, "").slice(-4).toUpperCase() : "DEV";
-    const timestamp = Date.now().toString().slice(-4);
-    return `SUB-${prefix}-${devSuffix}-${timestamp}`;
+  const createBuildSubmissionId = (projName, dId, existingSubs = []) => {
+    const cleanDevId = (dId || 'dev001').trim().toLowerCase();
+    const cleanProj = (projName || 'prj').trim();
+    const words = cleanProj.match(/[a-zA-Z0-9]+/g) || [];
+
+    let acronym = 'prj';
+    if (words.length > 1) {
+      acronym = words.map((w) => w[0]).join('').toLowerCase();
+    } else if (words.length === 1) {
+      const w = words[0].toLowerCase();
+      acronym = w.slice(0, 3);
+    }
+    const prefix = `${cleanDevId}-${acronym}`;
+
+    const matching = (existingSubs || []).filter((s) => {
+      const sId = (s.id || '').toLowerCase();
+      return sId.startsWith(prefix);
+    });
+
+    let maxSeq = 0;
+    matching.forEach((s) => {
+      const parts = s.id.split('-');
+      if (parts.length >= 3) {
+        const num = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    });
+
+    const nextSeq = String(maxSeq + 1).padStart(3, '0');
+    return `${prefix}-${nextSeq}`;
   };
 
   const sendAdminNotification = async (messageText) => {
@@ -479,5 +506,4 @@ function DeveloperSendProject({ developer }) {
     </div>
   );
 }
-
 export default DeveloperSendProject;  

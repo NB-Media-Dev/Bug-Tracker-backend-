@@ -11,6 +11,7 @@ import AdminPieChart from "./Adminchart";
 import Adminbarchart from "./AdminBarchart";
 import Bugstatus from "./Bugstatus";
 import { API_BASE, authFetch } from "../lib/api";
+import { formatSubmissionId } from "../lib/utils";
 
 function Dasboard({ onNavigate }) {
   const admin = JSON.parse(localStorage.getItem("admin_user") || "{}") || {};
@@ -158,11 +159,20 @@ function Dasboard({ onNavigate }) {
 
   const recentProjects = [...projectSubmissions]
     .filter((sub) => !sub.id.startsWith("FIX-"))
-    .sort(
-      (a, b) =>
-        new Date(b.date_submitted || b.created_at || Date.now()) -
-        new Date(a.date_submitted || a.created_at || Date.now())
-    )
+    .sort((a, b) => {
+      const getSeq = (s) => {
+        const parts = (s.id || "").split("-");
+        const num = parseInt(parts[parts.length - 1], 10);
+        return isNaN(num) ? 0 : num;
+      };
+      const seqA = getSeq(a);
+      const seqB = getSeq(b);
+      if (seqA !== seqB) return seqA - seqB;
+      return (
+        new Date(a.date_submitted || a.created_at || 0) -
+        new Date(b.date_submitted || b.created_at || 0)
+      );
+    })
     .slice(0, 4)
     .map((sub) => {
       const projectBugs = reportedBugs.filter((b) => {
@@ -216,7 +226,7 @@ function Dasboard({ onNavigate }) {
       }
 
       return {
-        id: sub.id,
+        id: formatSubmissionId(sub),
         project: sub.project_name,
         developer: sub.developer_name || "Unknown Developer",
         tester: sub.claimed_by || "Not Claimed",

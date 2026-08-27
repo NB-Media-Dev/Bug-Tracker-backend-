@@ -62,8 +62,12 @@ export const generateContinuousBugId = (allExistingBugs = [], localDrafts = [], 
 export const formatNotificationMessage = (message, projectName = "General", bugsList = []) => {
   if (!message) return "";
 
-  if (message.startsWith("Project:") || message.toLowerCase().includes("| status:")) {
-    const parts = message.split("|");
+  let cleaned = message;
+  cleaned = cleaned.replace(/^Developer\s+/i, "");
+  cleaned = cleaned.replace(/\(([A-Za-z0-9]+)\)\s*\(\1\)/gi, "($1)");
+
+  if (cleaned.startsWith("Project:") || cleaned.toLowerCase().includes("| status:")) {
+    const parts = cleaned.split("|");
     const pName = (projectName && projectName !== "General" ? projectName : parts[0].replace(/Project:/i, "").trim()).toUpperCase();
     
     let pct = 0;
@@ -73,15 +77,15 @@ export const formatNotificationMessage = (message, projectName = "General", bugs
         const closed = projBugs.filter(b => ['Closed', 'Resolved'].includes((b.status || b.testerStatus || '').toString())).length;
         pct = Math.round((closed / projBugs.length) * 100);
       } else {
-        pct = 100;
+        pct = 0;
       }
     } else {
-      pct = message.toLowerCase().includes("completed") ? 100 : 0;
+      pct = cleaned.toLowerCase().includes("completed") ? 100 : 0;
     }
     return `${pName} progress is ${pct}%`;
   }
 
-  return message.replace(/(\[?([A-Z0-9]+-\d+|\bBUG-\d+|\bGE-\d+)\]?)/gi, (match, fullMatch, bugIdStr) => {
+  return cleaned.replace(/(\[?([A-Z0-9]+-\d+|\bBUG-\d+|\bGE-\d+)\]?)/gi, (match, fullMatch, bugIdStr) => {
     const parts = bugIdStr.split("-");
     if (parts.length === 2 && parts[0] && !["BUG", "PRJ", "GE"].includes(parts[0].toUpperCase())) {
       const numStr = parts[1].replace(/\D/g, "");
@@ -256,6 +260,103 @@ export const matchesTester = (bug, testerName, testerEmail, testerId) => {
   if (testerName && norm(bug.tester_name || bug.testerName) === norm(testerName)) return true;
   return false;
 };
+
+// ---------------------------------------------------------------------------
+// Match a project submission to a tester by claimedById / claimedBy
+// ---------------------------------------------------------------------------
+export const matchesSubmissionTester = (sub, testerName, testerEmail, testerId) => {
+  if (!sub) return false;
+  const norm = (v) => (v || "").trim().toLowerCase();
+  const claimedById = norm(sub.claimedById || sub.claimed_by_id);
+  const claimedBy = norm(sub.claimedBy || sub.claimed_by);
+
+  if (testerId && claimedById && claimedById === norm(testerId)) return true;
+  if (testerName && claimedBy && claimedBy === norm(testerName)) return true;
+  return false;
+};
+
+// ---------------------------------------------------------------------------
+// Read developer info from localStorage or prop (used across Developer pages)
+// ---------------------------------------------------------------------------
+export const getDeveloperInfo = (propDeveloper = null) => {
+  try {
+    const dUser = JSON.parse(localStorage.getItem("developer_user") || "{}");
+    const name = propDeveloper?.name || dUser?.name || localStorage.getItem("developer_name") || "";
+    const email = propDeveloper?.email || dUser?.company_email || dUser?.email || "";
+    const id =
+      propDeveloper?.employee_id ||
+      propDeveloper?.id ||
+      dUser?.employee_id ||
+      localStorage.getItem("developer_id") ||
+      localStorage.getItem("developer_employee_id") ||
+      (dUser?.id ? `DEV${String(dUser.id).padStart(3, "0")}` : "");
+    return { name, email, id };
+  } catch {
+    return {
+      name: propDeveloper?.name || "",
+      email: propDeveloper?.email || "",
+      id: propDeveloper?.employee_id || propDeveloper?.id || "",
+    };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Match a bug/item to a developer by id / email / name (used across Developer pages)
+// ---------------------------------------------------------------------------
+export const matchesDeveloper = (bug, devName, devEmail, devId) => {
+  if (!bug) return false;
+  const norm = (v) => (v || "").toString().trim().toLowerCase();
+
+  const bDevId = norm(bug.developer_id || bug.developerId || bug.developer_employee_id || bug.developerIdStr);
+  const bDevEmail = norm(bug.developer_email || bug.developerEmail);
+  const bDevName = norm(bug.developer_name || bug.developerName || bug.developer);
+
+  const targetId = norm(devId);
+  const targetEmail = norm(devEmail);
+  const targetName = norm(devName);
+
+  if (targetId && bDevId && (bDevId === targetId || bDevId.includes(targetId) || targetId.includes(bDevId))) return true;
+  if (targetEmail && bDevEmail && bDevEmail === targetEmail) return true;
+  if (targetName && bDevName && (bDevName === targetName || bDevName.includes(targetName) || targetName.includes(bDevName))) return true;
+
+  return false;
+};
+
+// ---------------------------------------------------------------------------
+// Format Project Submission ID as dev003-nmw-001
+// ---------------------------------------------------------------------------
+export const formatSubmissionId = (sub) => {
+  if (!sub) return "dev001-prj-001";
+  const idStr = String(sub.id || sub.pk || "").trim();
+
+  if (/^[a-z0-9]+-[a-z0-9]+-\d{3,}$/i.test(idStr) && !idStr.toUpperCase().startsWith("SUB-") && !idStr.toUpperCase().startsWith("BUILD-")) {
+    return idStr.toLowerCase();
+  }
+
+  const rawDevId = sub.developer_id || sub.developerId || "DEV001";
+  const cleanDevId = String(rawDevId).replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "dev001";
+
+  const rawProj = sub.project_name || sub.projectName || sub.project || "PRJ";
+  const words = String(rawProj).trim().match(/[a-zA-Z0-9]+/g) || [];
+
+  let acronym = "prj";
+  if (words.length > 1) {
+    acronym = words.map((w) => w[0]).join("").toLowerCase();
+  } else if (words.length === 1) {
+    const w = words[0].toLowerCase();
+    acronym = w.slice(0, 3);
+  }
+
+  const numMatch = idStr.match(/\d+$/);
+  let seq = "001";
+  if (numMatch) {
+    const rawNum = parseInt(numMatch[0], 10);
+    seq = String((rawNum % 100) || 1).padStart(3, "0");
+  }
+
+  return `${cleanDevId}-${acronym}-${seq}`;
+};
+
 
 // ---------------------------------------------------------------------------
 // Status badge styling (used across 5+ pages)

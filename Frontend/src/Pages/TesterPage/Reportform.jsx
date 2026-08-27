@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Save,
   Edit3,
+  Calendar,
 } from "lucide-react";
 import { getProjectPrefix } from "../../lib/theme";
 import { API_BASE, authFetch } from "../../lib/api";
@@ -188,14 +189,12 @@ function Reportform({ onNavigate }) {
 
     if (rawName && rawId) {
       let cleanedName = rawName.trim();
-
       if (cleanedName.endsWith(")")) {
         const open = cleanedName.lastIndexOf("(");
         if (open !== -1) {
           cleanedName = cleanedName.slice(0, open).trim();
         }
       }
-
       return `${cleanedName} (${rawId})`;
     }
 
@@ -207,7 +206,7 @@ function Reportform({ onNavigate }) {
           dev.id === rawName,
       );
       if (match) {
-        return `${match.name} (${match.id})`;
+        return match.name;
       }
       return rawName;
     }
@@ -217,7 +216,7 @@ function Reportform({ onNavigate }) {
         (dev) => dev.id === rawId || dev.id === rawId.replace(/^DEV/i, ""),
       );
       if (match) {
-        return `${match.name} (${match.id})`;
+        return match.name;
       }
       return rawId.startsWith("DEV") ? rawId : `DEV${rawId}`;
     }
@@ -1572,16 +1571,34 @@ function Reportform({ onNavigate }) {
                 >
                   Due Date <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  id="dueDate"
-                  value={formData.dueDate || ""}
-                  onChange={handleInputChange}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full text-xs border border-gray-300 rounded-lg p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="dd/mm/yyyy"
+                    value={
+                      formData.dueDate
+                        ? (() => {
+                            const parts = formData.dueDate.split("-");
+                            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : formData.dueDate;
+                          })()
+                        : ""
+                    }
+                    readOnly
+                    className="w-full text-xs border border-gray-300 rounded-lg p-2 pr-8 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700 cursor-pointer font-medium"
+                    required
+                  />
+                  <input
+                    type="date"
+                    name="dueDate"
+                    id="dueDate"
+                    value={formData.dueDate || ""}
+                    min={new Date().toISOString().split("T")[0]}
+                    onChange={handleInputChange}
+                    className="absolute inset-0 opacity-1 border border-gray-300 w-full h-full cursor-pointer z-10"
+                    required
+                  />
+                  <Calendar size={14} className="absolute right-2.5 top-2.5 text-gray-400 pointer-events-none z-0" />
+                </div>
               </div>
             </div>
 

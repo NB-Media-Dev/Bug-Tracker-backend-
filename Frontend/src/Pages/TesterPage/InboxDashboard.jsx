@@ -183,8 +183,6 @@ function InboxDashboard({ onNavigate }) {
           </div>
         </div>
       </div>
-
-      
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
        
         <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden flex flex-col h-[600px]">
@@ -236,16 +234,16 @@ function InboxDashboard({ onNavigate }) {
                       setActiveMessageId(msg.id);
                       handleMarkAsRead(msg.id);
                     }}
-                    className={`p-4 cursor-pointer transition-all flex flex-col gap-1.5 hover:bg-slate-50/80 relative ${
-                      isActive ? 'bg-blue-50/45 border-l-4 border-blue-600 pl-3' : 'pl-4'
+                    className={`w-full text-left p-4 cursor-pointer transition-all flex flex-col gap-1.5 hover:bg-slate-50/80 relative ${
+                      isActive ? ' border-l-1 border-t-2 border-blue-100 bg-gray-100 pl-3.5' : 'pl-4 bg-white'
                     }`}
                   >
                     {isUnread && (
                       <span className="absolute top-4 right-4 h-2.5 w-2.5 rounded-full bg-blue-600"></span>
                     )}
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold text-blue-700">
                           {msg.projectName || msg.project_name}
                         </span>
@@ -255,19 +253,19 @@ function InboxDashboard({ onNavigate }) {
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-gray-400 font-mono">{msg.date}</span>
+                      <span className="text-[10px] text-gray-400 font-mono shrink-0">{msg.date}</span>
                     </div>
 
-                    <h3 className={`text-xs truncate text-gray-900 ${isUnread ? 'font-bold' : 'font-semibold'}`}>
+                    <h3 className={`text-xs text-gray-900 break-words ${isUnread ? 'font-bold' : 'font-semibold'}`}>
                       {msg.subject}
                     </h3>
 
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                      <User size={12} className="text-gray-400" />
+                      <User size={12} className="text-gray-400 shrink-0" />
                       <span className="truncate font-medium">{msg.developerName || msg.developer_name}</span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-150 w-fit mt-1 max-w-[220px] truncate">
+                    <div className="flex items-center gap-1.5 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-150 w-fit max-w-full truncate mt-1">
                       {isUrlFormat ? (
                         <>
                           <Code size={11} className="text-blue-500 shrink-0" />

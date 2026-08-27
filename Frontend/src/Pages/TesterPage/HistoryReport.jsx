@@ -21,9 +21,9 @@ function HistoryReport() {
 
       const data = await response.json();
       const allBugsData = Array.isArray(data) ? data : data.results || [];
-      const filteredData = allBugsData.filter(b => matchesTester(b, testerName, testerEmail, testerId));
-      
-      const rawMapped = filteredData.map(b => normalizeBug(b, { testerName, testerId, testerEmail }));
+      const filteredData = allBugsData.filter((b) => matchesTester(b, testerName, testerEmail, testerId));
+
+      const rawMapped = filteredData.map((b) => normalizeBug(b, { testerName, testerId, testerEmail }));
 
       const chronological = [...rawMapped].sort((a, b) => {
         const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId || a.id).replace(/\D/g, ''), 10) || 0);

@@ -13,8 +13,8 @@ import {
   ChevronUp,
   FileText,
 } from "lucide-react";
-import { API_BASE } from "../../lib/api";
-import { normalizeBug, formatBugId } from "../../lib/utils";
+import { API_BASE, authFetch } from "../../lib/api";
+import { normalizeBug, formatBugId, getDeveloperInfo, matchesDeveloper } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function DeveloperMyReport({ developer }) {
@@ -28,13 +28,9 @@ function DeveloperMyReport({ developer }) {
   const [showResolveToast, setShowResolveToast] = useState(false);
   const [expandedProjects, setExpandedProjects] = useState({});
 
-console.log(viewingBug);
-
-
-  const devName = developer?.name || "Vasanthan";
-  const devId =
-    developer?.employee_id ||
-    (developer?.id ? `DEV${String(developer.id).padStart(3, "0")}` : "DEV001");
+  const devInfo = getDeveloperInfo(developer);
+  const devName = devInfo.name;
+  const devId = devInfo.id;
 
   const toggleProjectExpand = (projName) => {
     setExpandedProjects((prev) => ({
@@ -46,17 +42,13 @@ console.log(viewingBug);
   const loadBugs = async () => {
     let allTasks = [];
     try {
-      const response = await fetch(`${API_BASE}/api/bugs/`);
+      const response = await authFetch(`${API_BASE}/api/bugs/`);
       if (response.ok) {
         const data = await response.json();
-        const devBugs = data.filter((b) => {
-          const bDevId = b.developerId || b.developer_id || "";
-          const bDevName = b.developerName || b.developer_name || "";
-          return (
-            (bDevId && devId && bDevId.toUpperCase() === devId.toUpperCase()) ||
-            (bDevName && devName && bDevName.toLowerCase().includes(devName.toLowerCase()))
-          );
-        });
+        const rawList = Array.isArray(data) ? data : data.results || [];
+        const devBugs = rawList.filter((b) =>
+          matchesDeveloper(b, devInfo.name, devInfo.email, devInfo.id)
+        );
         const mapped = devBugs.map((b) => ({
           ...normalizeBug(b),
           testerEdited: b.testerEdited || b.tester_edited || false,

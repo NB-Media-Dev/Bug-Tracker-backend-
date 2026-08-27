@@ -310,20 +310,25 @@ class BugReportDetailView(APIView):
             formatted_id = f"{acronym}-{seq}"
 
             tester_title = updated_bug.tester_name or "Tester"
+            tester_name_clean = str(tester_title).split('(')[0].strip()
+
+            dev_id = updated_bug.developer_id or getattr(updated_bug, 'developerId', None)
+            dev_name = updated_bug.developer_name or getattr(updated_bug, 'developerName', None) or getattr(updated_bug, 'developer', None) or 'Developer'
+            dev_name_clean = str(dev_name).split('(')[0].strip()
+
             if new_status == "Closed":
-                msg = f'Tester {tester_title} verified and closed bug [{formatted_id}]'
+                msg = f'Tester {tester_name_clean} verified and closed bug [{formatted_id}]'
             elif new_status == "Not Fixed":
-                msg = f'Tester {tester_title} marked bug [{formatted_id}] as "Not Fixed"'
+                msg = f'Tester {tester_name_clean} marked bug [{formatted_id}] as "Not Fixed"'
             elif new_status == "Open":
-                msg = f'Tester {tester_title} updated bug [{formatted_id}] status to "Open"'
+                msg = f'Tester {tester_name_clean} updated bug [{formatted_id}] status to "Open"'
             else:
                 msg = f'Bug [{formatted_id}] status updated to "{updated_bug.status}"'
 
-            dev_id = updated_bug.developer_id or getattr(updated_bug, 'developerId', None)
-            dev_name = updated_bug.developer_name or getattr(updated_bug, 'developerName', None) or getattr(updated_bug, 'developer', None)
-            
-            if new_status in ['Open', 'Closed', 'Not Fixed'] and dev_name and str(dev_name).strip().lower() != 'unassigned':
-                dev_name_clean = str(dev_name).split('(')[0].strip()
+            norm_status = str(new_status or '').strip().lower()
+
+            # 1. Notifications sent to Developer (when Tester updates status to Open, Closed, Not Fixed)
+            if norm_status in ['open', 'closed', 'not fixed', 'not-fixed'] and dev_name and str(dev_name).strip().lower() != 'unassigned':
                 dev_email = ''
                 real_dev_id = dev_id or 'DEV001'
 
@@ -356,16 +361,15 @@ class BugReportDetailView(APIView):
                 )
 
             # 2. Notifications sent to Tester (when Developer updates status to Pending, Resolved, Fixed, In Progress)
-            if new_status in ['Pending', 'In Progress', 'In-Progress', 'Resolved', 'Fixed']:
-                if str(new_status).strip().lower() == 'pending':
+            if norm_status in ['pending', 'in progress', 'in-progress', 'resolved', 'fixed']:
+                if norm_status == 'pending':
                     t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Pending"'
-                elif str(new_status).strip().lower() in ['resolved', 'fixed']:
-                    t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Resolved"'
+                elif norm_status in ['resolved', 'fixed']:
+                    t_msg = f'Developer {dev_name_clean} resolved bug [{formatted_id}] for project "{proj_name}". Please verify and close.'
                 else:
                     t_msg = f'Developer {dev_name_clean} updated bug [{formatted_id}] status to "{new_status}"'
 
                 tester_email = updated_bug.tester_email or ""
-                tester_name_clean = str(updated_bug.tester_name or "Tester").split('(')[0].strip()
                 real_tester_id = updated_bug.tester_id or "TS001"
 
                 try:
@@ -490,14 +494,92 @@ class NotificationDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def generate_submission_id(dev_id, project_name):
+    clean_dev_id = str(dev_id or 'dev001').strip().lower()
+    clean_proj = str(project_name or 'prj').strip()
+    words = re.findall(r'[a-zA-Z0-9]+', clean_proj)
+    
+    if len(words) > 1:
+        acronym = "".join(w[0] for w in words).lower()
+    elif len(words) == 1:
+        w = words[0].lower()
+        acronym = w[:3] if len(w) >= 3 else w
+    else:
+        acronym = "prj"
+        
+    dev_prefix = f"{clean_dev_id}-"
+    existing_ids = ProjectSubmission.objects.filter(id__istartswith=dev_prefix).values_list('id', flat=True)
+    max_seq = 0
+    pattern = re.compile(rf"^{re.escape(clean_dev_id)}-(?:[a-z0-9]+-(\d+)|(\d+)-[a-z0-9]+)$", re.IGNORECASE)
+    for existing_id in existing_ids:
+        match = pattern.match(str(existing_id))
+        if match:
+            try:
+                seq_str = match.group(1) or match.group(2)
+                seq = int(seq_str)
+                if seq > max_seq:
+                    max_seq = seq
+            except ValueError:
+                pass
+    next_seq = str(max_seq + 1).zfill(3)
+    return f"{clean_dev_id}-{acronym}-{next_seq}"
+
+
+def reformat_legacy_submission_ids():
+    try:
+        all_subs = list(ProjectSubmission.objects.all().order_by('developer_id', 'id', 'date_submitted'))
+        dev_seq_counters = {}
+        
+        for sub in all_subs:
+            dev_id = str(sub.developer_id or 'dev001').strip().lower()
+            clean_proj = str(sub.project_name or 'prj').strip()
+            words = re.findall(r'[a-zA-Z0-9]+', clean_proj)
+            if len(words) > 1:
+                acronym = "".join(w[0] for w in words).lower()
+            elif len(words) == 1:
+                w = words[0].lower()
+                acronym = w[:3] if len(w) >= 3 else w
+            else:
+                acronym = "prj"
+
+            current_counter = dev_seq_counters.get(dev_id, 0) + 1
+            dev_seq_counters[dev_id] = current_counter
+            new_id = f"{dev_id}-{acronym}-{str(current_counter).zfill(3)}"
+
+            if sub.id != new_id:
+                sub_dict = {
+                    'id': new_id,
+                    'project_name': sub.project_name,
+                    'developer_name': sub.developer_name,
+                    'developer_id': sub.developer_id,
+                    'version': sub.version,
+                    'subject': sub.subject,
+                    'date_submitted': sub.date_submitted,
+                    'project_link': sub.project_link,
+                    'status': sub.status,
+                    'downloaded': sub.downloaded,
+                    'claimed_by': sub.claimed_by,
+                    'claimed_by_id': sub.claimed_by_id,
+                }
+                with transaction.atomic():
+                    Testing.objects.filter(project_name=sub.project_name).update(project_name=sub.project_name)
+                    Notification.objects.filter(project_name=sub.project_name).update(project_name=sub.project_name)
+                    old_qs = ProjectSubmission.objects.filter(id=sub.id)
+                    old_qs.delete()
+                    ProjectSubmission.objects.create(**sub_dict)
+    except Exception as e:
+        logger.error(f"Error reformatting legacy submission IDs: {e}")
+
+
 class ProjectSubmissionListCreateView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):
-        developer_name = request.query_params.get('developer_name')
+        reformat_legacy_submission_ids()
         developer_id = request.query_params.get('developer_id') or request.query_params.get('developerId')
-        submissions = ProjectSubmission.objects.all().order_by('-date_submitted')
+        developer_name = request.query_params.get('developer_name') or request.query_params.get('developerName')
+        submissions = ProjectSubmission.objects.all().order_by('id')
         if developer_id:
             submissions = submissions.filter(Q(developer_id__iexact=developer_id) | Q(developer_name__icontains=developer_id))
         elif developer_name:
@@ -506,8 +588,49 @@ class ProjectSubmissionListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def _send_submission_notifications(self, submission, dev_id):
-        testers = Employee.objects.filter(role='Tester')
-        if testers.exists():
+        target_name = (submission.claimed_by or '').strip()
+        target_id = (submission.claimed_by_id or '').strip()
+
+        raw_dev_name = (submission.developer_name or '').split('(')[0].strip()
+        dev_label = f"{raw_dev_name} ({dev_id})" if raw_dev_name and dev_id and dev_id.lower() not in raw_dev_name.lower() else (raw_dev_name or dev_id)
+        sub_msg = f'{dev_label} submitted project build: "{submission.project_name}"'
+
+        target_testers = []
+        if target_name or target_id:
+            query = Q(role='Tester')
+            if target_id:
+                query &= (Q(employee_id__iexact=target_id) | Q(name__icontains=target_name))
+            elif target_name:
+                query &= Q(name__icontains=target_name)
+            target_testers = list(Employee.objects.filter(query))
+
+        if target_testers:
+            for tester in target_testers:
+                Notification.objects.create(
+                    recipient_email=tester.company_email,
+                    recipient_name=tester.name,
+                    recipient_role='Tester',
+                    recipient_id=tester.employee_id,
+                    notification_type='project_submitted',
+                    message=sub_msg,
+                    bug_report=None,
+                    project_name=submission.project_name,
+                    sender_id=dev_id
+                )
+        elif target_name:
+            Notification.objects.create(
+                recipient_email=f"{target_name.lower().replace(' ', '')}@bugtracker.com",
+                recipient_name=target_name,
+                recipient_role='Tester',
+                recipient_id=target_id or 'TS001',
+                notification_type='project_submitted',
+                message=sub_msg,
+                bug_report=None,
+                project_name=submission.project_name,
+                sender_id=dev_id
+            )
+        else:
+            testers = Employee.objects.filter(role='Tester')
             for tester in testers:
                 Notification.objects.create(
                     recipient_email=tester.company_email,
@@ -515,23 +638,11 @@ class ProjectSubmissionListCreateView(APIView):
                     recipient_role='Tester',
                     recipient_id=tester.employee_id,
                     notification_type='project_submitted',
-                    message=f'Developer {submission.developer_name} ({dev_id}) submitted project build: "{submission.project_name}"',
+                    message=sub_msg,
                     bug_report=None,
                     project_name=submission.project_name,
                     sender_id=dev_id
                 )
-        else:
-            Notification.objects.create(
-                recipient_email='tester@bugtracker.com',
-                recipient_name='Testers Team',
-                recipient_role='Tester',
-                recipient_id='TS001',
-                notification_type='project_submitted',
-                message=f'Developer {submission.developer_name} ({dev_id}) submitted project build: "{submission.project_name}"',
-                bug_report=None,
-                project_name=submission.project_name,
-                sender_id=dev_id
-            )
 
         Notification.objects.create(
             recipient_email='vasan11@gmail.com',
@@ -539,7 +650,7 @@ class ProjectSubmissionListCreateView(APIView):
             recipient_role='Admin',
             recipient_id='ADM001',
             notification_type='project_submitted',
-            message=f'Developer {submission.developer_name} ({dev_id}) submitted project build: "{submission.project_name}"',
+            message=sub_msg,
             bug_report=None,
             project_name=submission.project_name,
             sender_id=dev_id
@@ -549,7 +660,7 @@ class ProjectSubmissionListCreateView(APIView):
         project_bugs = BugReport.objects.filter(module__iexact=proj_name)
         total_count = project_bugs.count()
         closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
-        pct = int((closed_count / total_count) * 100) if total_count > 0 else 100
+        pct = int((closed_count / total_count) * 100) if total_count > 0 else 0
 
         Notification.objects.create(
             recipient_email='cto@company.com',
@@ -588,12 +699,11 @@ class ProjectSubmissionListCreateView(APIView):
 
     def post(self, request):
         data = request.data.copy()
-        if not data.get('id'):
-            data['id'] = f"BUILD-{str(int(time.time()))[-6:]}"
-
         dev_id = data.get('developerId') or data.get('developer_id') or 'DEV001'
         dev_name = data.get('developerName') or data.get('developer_name') or ''
         project_name = (data.get('projectName') or data.get('project_name') or '').strip()
+
+        data['id'] = generate_submission_id(dev_id, project_name)
 
         if project_name:
             dev_clean = dev_name.split('(')[0].strip() if dev_name else ''
