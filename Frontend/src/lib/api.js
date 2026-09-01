@@ -26,7 +26,6 @@ export const resolveApiUrl = (url) => {
         return parsed.pathname + parsed.search;
       }
     } catch {
-      // fallback to original url if parsing fails
     }
     return url;
   }
@@ -55,10 +54,10 @@ export const authFetch = async (url, options = {}) => {
     if (typeof window !== "undefined" && window.location && window.location.hostname) {
       const hostname = window.location.hostname;
       if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-        candidates.push(`http://${hostname}:8000${cleanPath}`);
+        candidates.push(`http://${hostname}:8001${cleanPath}`);
       }
     }
-    candidates.push(`http://127.0.0.1:8000${cleanPath}`);
+    candidates.push(`http://127.0.0.1:8001${cleanPath}`);
     return Array.from(new Set(candidates));
   };
 
@@ -82,7 +81,6 @@ export const authFetch = async (url, options = {}) => {
         }
       }
 
-      // If response is a proxy error (502, 503, 504), try next candidate URL
       if (response.status === 502 || response.status === 503 || response.status === 504) {
         lastError = new Error(`Proxy error status ${response.status}`);
         continue;

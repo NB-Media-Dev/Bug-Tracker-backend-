@@ -1,6 +1,17 @@
 
-import { useState, useEffect } from "react";
-import { FileArchive, Bug, Calendar } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  FileArchive,
+  Bug,
+  Calendar,
+  Bell,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Inbox,
+  ArrowRight,
+  CheckCheck,
+} from "lucide-react";
 import UserHeaderPanel from "../components/UserHeaderPanel";
 import Dashboard from "./TesterPage/Dashboard";
 import Reportfrom from "./TesterPage/Reportform";
@@ -15,7 +26,94 @@ import ProfileModal from "../components/ProfileModal";
 import UnsavedBugWarningModal from "../components/UnsavedBugWarningModal";
 import { saveStoredAvatar, getStoredAvatar } from "../lib/avatar";
 import { API_BASE, authFetch } from "../lib/api";
-import { formatNotificationMessage } from "../lib/utils";
+import { formatNotificationMessage, truncateText } from "../lib/utils";
+
+const renderNotifBadgeIcon = (badge, message) => {
+  const b = (badge || "").toLowerCase();
+  const m = (message || "").toLowerCase();
+
+  if (b.includes("accepted") || m.includes("accepted") || b.includes("resolved") || m.includes("resolved")) {
+    return {
+      icon: <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />,
+      bg: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700",
+      dot: "bg-emerald-500",
+    };
+  }
+  if (b.includes("not fixed") || m.includes("not fixed") || b.includes("alert")) {
+    return {
+      icon: <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />,
+      bg: "bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700",
+      dot: "bg-rose-500",
+    };
+  }
+  if (b.includes("build") || m.includes("submitted project build") || b.includes("submission")) {
+    return {
+      icon: <FileArchive className="w-4 h-4 text-indigo-600 shrink-0" />,
+      bg: "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700",
+      dot: "bg-indigo-500",
+    };
+  }
+  if (b.includes("assigned") || b.includes("pending") || m.includes("pending")) {
+    return {
+      icon: <Clock className="w-4 h-4 text-amber-600 shrink-0" />,
+      bg: "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700",
+      dot: "bg-amber-500",
+    };
+  }
+  return {
+    icon: <Bug className="w-4 h-4 text-blue-600 shrink-0" />,
+    bg: "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+    dot: "bg-blue-500",
+  };
+};
+
+const formatTimestamp = (dateString) => {
+  if (!dateString) return "Just now";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "Just now";
+
+  const dateStr = date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
+  const timeStr = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dateStr}, ${timeStr}`;
+};
+
+const getBadgeType = (type, message = "") => {
+  if (type === "build_submission" || type === "project_submitted" || (message || "").toLowerCase().includes("submitted project build")) {
+    return "Build Submitted";
+  }
+  if (type === "bug_updated") {
+    const m = (message || "").toLowerCase();
+    if (m.includes("not fixed")) return "Not Fixed Alert";
+    if (m.includes("closed") || m.includes("resolved")) return "Bug Resolved";
+    if (m.includes("pending")) return "Bug Pending";
+    if (m.includes("in progress")) return "In Progress";
+    return "Bug Updated";
+  }
+  if (type === "bug_created") return "Bug Created";
+  return "Developer Update";
+};
+
+const matchRecipient = (n, testerId, testerEmail, testerName) => {
+  const roleMatch = (n?.recipient_role || "").toLowerCase() === "tester" || !n?.recipient_role;
+  if (!roleMatch) return false;
+
+  const cleanTesterName = (testerName || "").split("(")[0].trim().toLowerCase();
+  const cleanRecipName = (n.recipient_name || "").split("(")[0].trim().toLowerCase();
+
+  const matchId = Boolean(testerId) && (n.recipient_id || "").toLowerCase().includes(testerId.toLowerCase());
+  const matchEmail = Boolean(testerEmail) && (n.recipient_email || "").toLowerCase() === testerEmail.toLowerCase();
+  const matchName = Boolean(cleanTesterName) && Boolean(cleanRecipName) && (
+    cleanTesterName.includes(cleanRecipName) || cleanRecipName.includes(cleanTesterName)
+  );
+
+  return Boolean(matchId || matchEmail || matchName || (!testerId && !testerEmail && !testerName));
+};
 
 function Testerdashboard({ tester: propTester, onLogout }) {
   const [testUser, setTestUser] = useState(() => {
@@ -59,6 +157,8 @@ function Testerdashboard({ tester: propTester, onLogout }) {
   const [notifications, setNotifications] = useState([]);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [notifDateFilter, setNotifDateFilter] = useState("");
+  const dropdownRef = useRef(null);
+
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
       return JSON.parse(
@@ -69,7 +169,6 @@ function Testerdashboard({ tester: propTester, onLogout }) {
       return [];
     }
   });
-  const [oldNotifPage, setOldNotifPage] = useState(1);
   const todayStr = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "short",
@@ -83,6 +182,23 @@ function Testerdashboard({ tester: propTester, onLogout }) {
       JSON.stringify(readNotifIds),
     );
   }, [readNotifIds]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        showNotifDropdown &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setShowNotifDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifDropdown]);
 
   const isReportPath = (p = "") => {
     const clean = (p || "").toLowerCase();
@@ -134,16 +250,6 @@ function Testerdashboard({ tester: propTester, onLogout }) {
     }
   };
 
-  const getButtonText = (isBuild, isValidHttpUrl, isAccepted) => {
-    if (isAccepted) {
-      return "View Bugs";
-    }
-    if (isBuild) {
-      return !isValidHttpUrl ? "Start Testing APK" : "Start Testing";
-    }
-    return "View Bugs";
-  };
-
   const getTesterCredentials = () => {
     try {
       const tUser = JSON.parse(localStorage.getItem("tester_user") || "{}");
@@ -159,18 +265,42 @@ function Testerdashboard({ tester: propTester, onLogout }) {
     }
   };
 
-  const loadNotifications = async () => {
-    let apiSubmissions = [];
+  const fetchAPIData = async () => {
     const credentials = getTesterCredentials();
+    const [resNotifs, resSubs] = await Promise.all([
+      authFetch(
+        `${API_BASE}/api/bugs/notifications/?recipient_id=${credentials.id}&role=Tester&email=${encodeURIComponent(credentials.email)}`
+      ),
+      authFetch(`${API_BASE}/api/bugs/submissions/`),
+    ]);
 
-    try {
-      const subsRes = await authFetch('/api/bugs/submissions/');
-      if (subsRes.ok) apiSubmissions = await subsRes.json();
-    } catch (e) {
-      console.error("Error loading notifications from API", e);
+    let apiNotifs = [];
+    if (resNotifs.ok) {
+      const data = await resNotifs.json();
+      const rawList = Array.isArray(data) ? data : data.results || [];
+      apiNotifs = rawList
+        .filter((n) => matchRecipient(n, credentials.id, credentials.email, credentials.name))
+        .map((n) => ({
+          id: String(n.id),
+          numericId: n.id,
+          message: n.message,
+          projectName: n.project_name || n.bug_report?.module || "General",
+          rawTimestamp: n.created_at || new Date().toISOString(),
+          timestamp: formatTimestamp(n.created_at),
+          read: n.is_read || false,
+          badge: getBadgeType(n.notification_type, n.message),
+          type: n.notification_type || "bug_updated",
+          bugReportId: n.bug_report?.id || n.bug_report,
+        }));
     }
 
-    const subNotifs = (Array.isArray(apiSubmissions) ? apiSubmissions : []).map((s) => {
+    let apiSubmissions = [];
+    if (resSubs.ok) {
+      const subJson = await resSubs.json();
+      apiSubmissions = Array.isArray(subJson) ? subJson : subJson.results || [];
+    }
+
+    const subNotifs = apiSubmissions.map((s) => {
       const rawDev = (s.developerName || s.developer_name || "").split("(")[0].trim();
       const devId = s.developer_id || s.developerId || "DEV001";
       const devLabel = rawDev ? `${rawDev} (${devId})` : devId;
@@ -185,58 +315,127 @@ function Testerdashboard({ tester: propTester, onLogout }) {
         zipFileName: s.zipFileName || s.zip_file_name,
         subject: s.subject || "",
         isAccepted,
-        rawTimestamp:
-          s.date_submitted || s.created_at || new Date().toISOString(),
-        date: s.date_submitted
-          ? new Date(s.date_submitted).toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-          }) +
-          ", " +
-          new Date(s.date_submitted).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-          : s.date || "Just now",
+        rawTimestamp: s.date_submitted || s.created_at || new Date().toISOString(),
+        timestamp: formatTimestamp(s.date_submitted || s.created_at),
         type: "build_submission",
+        badge: "Build Submitted",
         message: `${devLabel} submitted project build: "${s.projectName || s.project_name}"`,
       };
     });
 
-    subNotifs.sort(
-      (a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp),
-    );
+    return { apiNotifs, subNotifs };
+  };
 
-    setNotifications(subNotifs);
+  const deduplicateNotifications = (...sources) => {
+    const seen = new Set();
+    const unique = [];
+
+    sources.flat().forEach((notif) => {
+      if (!notif) return;
+      const key = `${notif.message}-${notif.timestamp}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        if (!notif.id)
+          notif.id = `local-${notif.timestamp}-${crypto.randomUUID()}`;
+        unique.push(notif);
+      }
+    });
+
+    unique.sort((a, b) => new Date(b.rawTimestamp) - new Date(a.rawTimestamp));
+    return unique;
+  };
+
+  const loadNotifications = async () => {
+    let apiNotifs = [];
+    let subNotifs = [];
+
+    try {
+      const result = await fetchAPIData();
+      apiNotifs = result.apiNotifs;
+      subNotifs = result.subNotifs;
+    } catch (e) {
+      console.warn("Backend API is offline or unreachable:", e.message);
+    }
+
+    const unique = deduplicateNotifications(apiNotifs, subNotifs);
+    setNotifications(unique);
   };
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+    const interval = setInterval(loadNotifications, 3000);
     window.addEventListener("notifications_updated", loadNotifications);
+    window.addEventListener("bugs_updated", loadNotifications);
     return () => {
       clearInterval(interval);
       window.removeEventListener("notifications_updated", loadNotifications);
+      window.removeEventListener("bugs_updated", loadNotifications);
     };
   }, []);
 
-  const handleStartTesting = (notif) => {
-    if (!readNotifIds.includes(notif.id)) {
-      setReadNotifIds((prev) => [...prev, notif.id]);
+  const handleNotificationClick = (notif) => {
+    const notifIdStr = String(notif.id);
+    if (!readNotifIds.includes(notifIdStr)) {
+      setReadNotifIds((prev) => Array.from(new Set([...prev, notifIdStr])));
     }
 
-    const projName = notif.projectName || notif.project_name || "General";
-    localStorage.setItem("selected_project_name", projName.toUpperCase());
+    if (notif.numericId || !isNaN(Number(notif.id))) {
+      const idToPatch = notif.numericId || notif.id;
+      authFetch(`${API_BASE}/api/bugs/notifications/${idToPatch}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_read: true }),
+      }).catch(() => {});
+    }
 
-    if (notif.isAccepted) {
-      navigate("/tester/bugreport");
-    } else {
+    const existingPopupDismissed = JSON.parse(localStorage.getItem("tester_dismissed_popups") || "[]");
+    if (!existingPopupDismissed.includes(notifIdStr)) {
+      localStorage.setItem("tester_dismissed_popups", JSON.stringify([...existingPopupDismissed, notifIdStr]));
+    }
+    window.dispatchEvent(new Event("notifications_updated"));
+
+    setShowNotifDropdown(false);
+
+    const projName = notif.projectName || notif.project_name || "General";
+    if (projName) {
+      localStorage.setItem("selected_project_name", projName.toUpperCase());
+    }
+
+    const isBuild = notif.type === "build_submission" || (notif.type || "").includes("project") || (notif.type || "").includes("build");
+    if (isBuild) {
       if (notif.rawSubmissionId) {
         localStorage.setItem("inbox_active_build_id", notif.rawSubmissionId);
       }
       navigate("/tester/inbox");
+    } else {
+      navigate("/tester/bugreport");
     }
-    setShowNotifDropdown(false);
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = visibleNotifications.map((n) => String(n.id)).filter(Boolean);
+    setReadNotifIds((prev) => Array.from(new Set([...prev.map(String), ...allIds])));
+
+    const existingPopupDismissed = JSON.parse(localStorage.getItem("tester_dismissed_popups") || "[]");
+    const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed.map(String), ...allIds]));
+    localStorage.setItem("tester_dismissed_popups", JSON.stringify(updatedPopupDismissed));
+
+    setNotifications((prev) =>
+      prev.map((n) => (allIds.includes(String(n.id)) ? { ...n, read: true } : n))
+    );
+
+    visibleNotifications.forEach((n) => {
+      const numericId = n.numericId || (!isNaN(Number(n.id)) ? Number(n.id) : null);
+      if (numericId) {
+        authFetch(`${API_BASE}/api/bugs/notifications/${numericId}/`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_read: true }),
+        }).catch(() => {});
+      }
+    });
+
+    window.dispatchEvent(new Event("notifications_updated"));
   };
 
   const renderPage = () => {
@@ -273,42 +472,23 @@ function Testerdashboard({ tester: propTester, onLogout }) {
   };
 
   const visibleNotifications = notifications.filter(matchesNotifDate);
-  const isNew = (n) => !readNotifIds.includes(n.id);
+  const isNew = (n) => !readNotifIds.includes(String(n.id));
   const newNotifications = visibleNotifications.filter(isNew);
-  const oldNotifications = visibleNotifications.filter((n) => !isNew(n));
   const unread = newNotifications.length;
-
-  const oldNotifsPerPage = 3;
-  const totalOldPages = Math.max(
-    1,
-    Math.ceil(oldNotifications.length / oldNotifsPerPage),
-  );
-
-  const renderSubmissionPayload = (linkVal, textVal) => {
-    const target = linkVal || textVal || "";
-    const isUrl =
-      target.includes("https://") ||
-      target.includes("http://") ||
-      target.includes("www.");
-
-    if (isUrl) {
-      const href = target.startsWith("www.") ? `https://${target}` : target;
-      return <span>{href}</span>;
-    }
-
-    return (
-      <code className="bg-gray-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono text-[10px]">
-        {target || "No link or details"}
-      </code>
-    );
-  };
 
   return (
     <div>
       <NotificationPopupAlerts
         role="tester"
         user={test}
-        onNotificationClick={() => navigate("/tester/inbox")}
+        onNotificationClick={(notif) => {
+          const isBuild = (notif.notification_type || "").includes("project") || (notif.notification_type || "").includes("build") || (notif.message || "").toLowerCase().includes("submitted project build");
+          if (isBuild) {
+            navigate("/tester/inbox");
+          } else {
+            navigate("/tester/bugreport");
+          }
+        }}
       />
       <div className="flex h-screen bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden">
         <Sidebar
@@ -340,163 +520,149 @@ function Testerdashboard({ tester: propTester, onLogout }) {
             </div>
 
             {/* Right: theme + date + user */}
-            <div className="relative flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               <ThemeSelector currentRole="tester" user={test} />
               {/* Date pill — hidden on mobile */}
               <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-700 dark:text-slate-200">
                 <Calendar size={14} className="text-slate-500 flex-shrink-0" />
                 <span className="font-medium text-xs whitespace-nowrap">{todayStr}</span>
               </div>
-              <UserHeaderPanel
-                user={{ ...test, role: test?.role || "Tester" }}
-                notificationCount={unread}
-                onBellClick={() => setShowNotifDropdown(!showNotifDropdown)}
-                onLogout={onLogout}
-                onProfileClick={() => setShowProfileModal(true)}
-                subtitle={testerEmail}
-              />
-
-              {showProfileModal && (
-                <ProfileModal
-                  user={test}
-                  role="tester"
-                  onClose={() => setShowProfileModal(false)}
-                  onUpdateUser={(updated) => {
-                    const updatedUser = { ...test, ...updated };
-                    setTestUser(updatedUser);
-                    localStorage.setItem("tester_user", JSON.stringify(updatedUser));
-                    saveStoredAvatar(updatedUser, updated.avatarUrl !== undefined ? updated.avatarUrl : getStoredAvatar(updatedUser));
-                    window.dispatchEvent(new Event("user_profile_updated"));
-                  }}
+              <div className="relative" ref={dropdownRef}>
+                <UserHeaderPanel
+                  user={{ ...test, role: test?.role || "Tester" }}
+                  notificationCount={unread}
+                  onBellClick={() => setShowNotifDropdown((prev) => !prev)}
+                  onLogout={onLogout}
+                  onProfileClick={() => setShowProfileModal(true)}
+                  subtitle={testerEmail}
                 />
-              )}
 
-              <UnsavedBugWarningModal
-                isOpen={showUnsavedModal}
-                onClose={() => setShowUnsavedModal(false)}
-                onConfirmLeave={handleConfirmLeave}
-              />
+                {showProfileModal && (
+                  <ProfileModal
+                    user={test}
+                    role="tester"
+                    onClose={() => setShowProfileModal(false)}
+                    onUpdateUser={(updated) => {
+                      const updatedUser = { ...test, ...updated };
+                      setTestUser(updatedUser);
+                      localStorage.setItem("tester_user", JSON.stringify(updatedUser));
+                      saveStoredAvatar(updatedUser, updated.avatarUrl !== undefined ? updated.avatarUrl : getStoredAvatar(updatedUser));
+                      window.dispatchEvent(new Event("user_profile_updated"));
+                    }}
+                  />
+                )}
 
-              {showNotifDropdown && (
-                <div className="fixed sm:absolute top-14 sm:top-full right-2 sm:right-0 mt-2 w-[min(320px,calc(100vw-1rem))] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 z-50 overflow-hidden">
-                  <div className="p-3 bg-blue-50 dark:bg-slate-800 border-b border-blue-100 dark:border-slate-700 flex items-center justify-between flex-wrap gap-2">
-                    <span className="font-bold text-xs text-blue-900 dark:text-blue-200 uppercase tracking-wider">Project Builds</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="date"
-                        value={notifDateFilter}
-                        onChange={(e) => setNotifDateFilter(e.target.value)}
-                        className="px-2 py-1 text-[10px] font-medium border border-blue-200 rounded-lg bg-white text-gray-800 focus:outline-none outline-none focus:ring-1 focus:ring-blue-450 dark:bg-slate-800 dark:text-white dark:border-slate-700"
-                        title="Filter notifications by date"
-                      />
-                      <button
-                        onClick={() => {
-                          const allIds = notifications.map((n) => n.id);
-                          setReadNotifIds(allIds);
-                        }}
-                        className="text-[10px] text-blue-700 dark:text-blue-300 hover:underline font-semibold cursor-pointer"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto text-xs divide-y divide-gray-100 dark:divide-slate-800">
-                    <div className="bg-blue-50/10 dark:bg-slate-800/10">
-                      <div className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800/40 text-[10px] font-bold text-blue-600 uppercase tracking-wide">
-                        New Notifications ({newNotifications.length})
+                <UnsavedBugWarningModal
+                  isOpen={showUnsavedModal}
+                  onClose={() => setShowUnsavedModal(false)}
+                  onConfirmLeave={handleConfirmLeave}
+                />
+
+                {showNotifDropdown && (
+                  <div className="fixed sm:absolute top-14 sm:top-full right-2 sm:right-0 mt-2 w-[min(380px,calc(100vw-1rem))] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200/90 dark:border-slate-800 z-50 overflow-hidden text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+                    {/* Header */}
+                    <div className="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-blue-50/90 dark:from-slate-800 dark:to-slate-800/80 border-b border-blue-100 dark:border-slate-700/80 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-2xs">
+                          <Bell size={13} />
+                        </div>
+                        <span className="font-extrabold text-xs text-blue-950 dark:text-blue-200 uppercase tracking-wider">
+                          Notifications
+                        </span>
+                        {unread > 0 && (
+                          <span className="text-[10px] font-black text-white bg-rose-600 px-2 py-0.5 rounded-full shadow-2xs animate-pulse">
+                            {unread} NEW
+                          </span>
+                        )}
                       </div>
 
-                      {newNotifications.length > 0 ? (
-                        newNotifications.map((n) => {
-                          const isBuild = n.type === "build_submission";
-                          const currentLink = n.projectLink || n.project_link || "";
-                          const currentSubject = n.subject || "";
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={notifDateFilter}
+                          onChange={(e) => setNotifDateFilter(e.target.value)}
+                          className="px-2 py-0.5 text-[10px] font-semibold border border-blue-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                          title="Filter notifications by date"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleMarkAllRead}
+                          className="inline-flex items-center gap-1 text-[10px] text-blue-700 dark:text-blue-300 hover:text-blue-900 font-bold bg-white/80 dark:bg-slate-800 px-2 py-1 rounded-lg border border-blue-200 dark:border-slate-700 shadow-2xs transition-all cursor-pointer"
+                          title="Mark all as read"
+                        >
+                          <CheckCheck size={11} /> Read All
+                        </button>
+                      </div>
+                    </div>
 
-                          const isValidHttpUrl =
-                            currentLink.trim().toLowerCase().startsWith("http://") ||
-                            currentLink.trim().toLowerCase().startsWith("https://");
-
-                          let displayMessageText = currentLink;
-                          if (
-                            (displayMessageText || "").toString().toLowerCase().includes("submitted for testing") ||
-                            currentSubject.includes("[APK MODE]")
-                          ) {
-                            displayMessageText = "An APK file has been received and is ready for testing.";
-                          }
+                    {/* Body List */}
+                    <div className="max-h-84 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800/80 text-xs">
+                      {visibleNotifications.length > 0 ? (
+                        visibleNotifications.map((n) => {
+                          const isUnread = isNew(n);
+                          const { icon, bg, dot } = renderNotifBadgeIcon(n.badge, n.message);
 
                           return (
                             <div
                               key={n.id}
-                              className="p-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors space-y-2 border-b border-gray-100 dark:border-slate-800"
+                              onClick={() => handleNotificationClick(n)}
+                              className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 relative group ${isUnread
+                                ? "bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50/80"
+                                : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50 opacity-90 hover:opacity-100"
+                                }`}
                             >
-                              {/* <div className="flex items-center justify-between">
-                                <span className="font-extrabold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
-                                  {isBuild ? (
-                                    <FileArchive size={14} className="text-blue-600 shrink-0" />
-                                  ) : (
-                                    <Bug size={14} className="text-amber-500 shrink-0" />
-                                  )}
-                                  {n.projectName || n.project_name}
-                                </span>
-                                <span className="text-[10px] text-gray-400 font-mono">{n.date || "Just now"}</span>
-                              </div> */}
+                              {/* Unread indicator dot */}
+                              {isUnread && (
+                                <span className={`absolute top-4 right-3.5 h-2 w-2 rounded-full ${dot} shadow-xs ring-2 ring-white dark:ring-slate-900 animate-pulse`} />
+                              )}
 
-                              <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
-                                {isBuild ? (
-                                  <>
-                                    Developer <strong>{n.developerName || n.developer_name}</strong> submitted: {isValidHttpUrl ? (
-                                      renderSubmissionPayload(currentLink, n.zipFileName || n.zip_file_name)
-                                    ) : (
-                                      <span className="text-gray-700 dark:text-gray-300 font-medium inline">{displayMessageText}</span>
-                                    )}
-                                  </>
-                                ) : (
-                                  formatNotificationMessage(n.message, n.projectName || n.project_name)
-                                )}
-                              </p>
+                              {/* Icon Chip */}
+                              <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 mt-0.5 shadow-2xs">
+                                {icon}
+                              </div>
 
-                              <div className="pt-1 flex items-center justify-end">
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartTesting(n)}
-                                  className={`px-3 py-1 text-white font-bold text-[11px] rounded-lg shadow-sm transition-all cursor-pointer ${isBuild && !isValidHttpUrl
-                                    ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
-                                    : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
-                                    }`}
-                                >
-                                  {getButtonText(isBuild, isValidHttpUrl)}
-                                </button>
+                              {/* Content */}
+                              <div className="flex-1 min-w-0 pr-3">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shadow-2xs ${bg}`}>
+                                    {n.badge || "Tester Update"}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-medium ml-auto">
+                                    {n.timestamp || "Just now"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors break-words overflow-wrap-break-word">
+                                  {truncateText(formatNotificationMessage(n.message, n.projectName || n.project_name || "General"), 20)}
+                                </p>
                               </div>
                             </div>
                           );
                         })
                       ) : (
-                        <p className="p-4 text-center text-gray-400 italic text-xs">No new notifications.</p>
-                      )}
-
-                      {oldNotifications.length > oldNotifsPerPage && (
-                        <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-850 border-t border-gray-100 dark:border-slate-800 text-[10px] text-gray-500">
-                          <button
-                            disabled={oldNotifPage === 1}
-                            onClick={() => setOldNotifPage((prev) => Math.max(1, prev - 1))}
-                            className="px-2 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded disabled:opacity-50 hover:bg-gray-50 font-bold"
-                          >
-                            Prev
-                          </button>
-                          <span>Page {oldNotifPage} of {totalOldPages}</span>
-                          <button
-                            disabled={oldNotifPage === totalOldPages}
-                            onClick={() => setOldNotifPage((prev) => Math.min(totalOldPages, prev + 1))}
-                            className="px-2 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded disabled:opacity-50 hover:bg-gray-50 font-bold"
-                          >
-                            Next
-                          </button>
+                        <div className="p-8 text-center text-slate-400 dark:text-slate-500 italic text-xs space-y-2">
+                          <Inbox className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                          <p>No notifications found.</p>
                         </div>
                       )}
                     </div>
+
+                    {/* Footer */}
+                    <div className="p-2.5 bg-slate-50 dark:bg-slate-800/80 border-t border-gray-100 dark:border-slate-800 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNotifDropdown(false);
+                          navigate("/tester/bugreport");
+                        }}
+                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>View all bug reports</span>
+                        <ArrowRight size={12} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </header>
 

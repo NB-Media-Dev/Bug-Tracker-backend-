@@ -1,24 +1,7 @@
-"""
-users/models.py
-
-Employee model — stores all employee details including auto-generated
-company credentials. The plain-text password is only sent via email;
-only the hashed password is stored in the database.
-"""
-
 from django.db import models
 
 
 class Employee(models.Model):
-    """
-    Represents an employee added by the admin.
-    Tracks status (Active/Inactive), presence (Online/Offline), and login timestamps.
-    employee_id is auto-generated based on role:
-      - Tester    -> TS001, TS002, TS003 ...
-      - Developer -> DEV001, DEV002, DEV003 ...
-      - Admin     -> ADM001, ADM002 ...
-    """
-
     ROLE_CHOICES = [
         ('Developer', 'Developer'),
         ('Tester', 'Tester'),
@@ -50,6 +33,7 @@ class Employee(models.Model):
     is_online = models.BooleanField(default=False, verbose_name='Is Online')
     last_login = models.DateTimeField(null=True, blank=True, verbose_name='Last Login')
     invite_sent = models.BooleanField(default=False, verbose_name='Invite Email Sent')
+    is_deleted = models.BooleanField(default=False, db_index=True, verbose_name='Is Deleted (Soft Delete)')
     is_temporary_password = models.BooleanField(default=False, verbose_name='Is Temporary Password')
     temp_password_expiry = models.DateTimeField(null=True, blank=True, verbose_name='Temporary Password Expiry')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Created At')
@@ -61,12 +45,6 @@ class Employee(models.Model):
 
     @classmethod
     def generate_employee_id(cls, role='Developer'):
-        """
-        Auto-generate a sequential employee ID with a role-based prefix:
-        - Tester    -> Ts001, Ts003...
-        - Developer -> Dev002, Dev004...
-        Numbering continuously increments across all roles.
-        """
         import re
         max_num = 0
         for emp in cls.objects.all():
@@ -81,11 +59,9 @@ class Employee(models.Model):
         return f"{prefix}{max_num + 1:03d}"
 
     def save(self, *args, **kwargs):
-        # Auto-assign employee_id only when first created (not on updates)
         if not self.employee_id:
             self.employee_id = Employee.generate_employee_id(self.role)
         else:
-            # If the role is updated, update the prefix of the employee_id
             import re
             match = re.match(r'^[A-Za-z]+(\d+)$', self.employee_id)
             if match:

@@ -32,13 +32,11 @@ export const getSavedTheme = (user, role) => {
   }
   return getDefaultThemeForRole(role);
 };
-
 export const applyTheme = (themeId) => {
   const targetTheme = THEMES.some(t => t.id === themeId) ? themeId : 'indigo';
   document.documentElement.dataset.theme = targetTheme;
   window.dispatchEvent(new CustomEvent('theme_changed', { detail: targetTheme }));
 };
-
 export const saveAndApplyUserTheme = (user, role, themeId) => {
   try {
     const key = getUserThemeKey(user, role);
@@ -48,15 +46,8 @@ export const saveAndApplyUserTheme = (user, role, themeId) => {
   }
   applyTheme(themeId);
 };
-
-/**
- * Synchronously reads the logged-in user's role and saved theme from localStorage
- * and applies it to <html data-theme="..."> BEFORE React renders.
- * Call this once in main.jsx before createRoot() to eliminate theme flash on refresh.
- */
 export const applyThemeOnLoad = () => {
   try {
-    // Determine the current role from localStorage (same logic as getStoredAuth)
     const accessToken = localStorage.getItem('access_token');
     const adminUser = JSON.parse(localStorage.getItem('admin_user') || 'null');
     const developerUser = JSON.parse(localStorage.getItem('developer_user') || 'null');
@@ -81,7 +72,7 @@ export const applyThemeOnLoad = () => {
       applyTheme(theme);
     }
   } catch (e) {
-    // Silently fail — theme will be applied by ThemeSelector on mount
+    
     console.error('applyThemeOnLoad error:', e);
   }
 };

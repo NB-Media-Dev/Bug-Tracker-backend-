@@ -222,31 +222,31 @@ function DeveloperSendProject({ developer }) {
     window.open("https://workplace.zoho.com", "_blank", "noopener,noreferrer");
   };
 
-  const handleDeleteSubmission = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this submission? This will also remove it from the testers' side.")) {
-      return;
-    }
+  // const handleDeleteSubmission = async (id) => {
+  //   if (!window.confirm("Are you sure you want to delete this project submission?")) {
+  //     return;
+  //   }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/bugs/submissions/${id}/`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        const updated = submittedProjects.filter(p => p.id !== id);
-        setSubmittedProjects(updated);
-        localStorage.setItem("developer_project_submissions", JSON.stringify(updated));
-        setSuccessMessage("Project and all related records deleted successfully!");
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 4000);
-      } else {
-        alert("Failed to delete the project submission from the database.");
-      }
-    } catch (err) {
-      console.error("Error deleting submission", err);
-      alert("Error connection failed during submission delete.");
-    }
-  };
+  //   try {
+  //     const res = await fetch(`${API_BASE}/api/bugs/submissions/${id}/`, {
+  //       method: "DELETE"
+  //     });
+  //     if (res.ok) {
+  //       const updated = submittedProjects.filter(p => p.id !== id);
+  //       setSubmittedProjects(updated);
+  //       localStorage.setItem("developer_project_submissions", JSON.stringify(updated));
+  //       setSuccessMessage("Project submission deleted successfully!");
+  //       setTimeout(() => {
+  //         setSuccessMessage("");
+  //       }, 4000);
+  //     } else {
+  //       alert("Failed to delete the project submission from the database.");
+  //     }
+  //   } catch (err) {
+  //     console.error("Error deleting submission", err);
+  //     alert("Error connection failed during submission delete.");
+  //   }
+  // };
 
 
   const renderLinkOrBadge = (linkVal, isLinkFormat) => {
@@ -368,24 +368,47 @@ function DeveloperSendProject({ developer }) {
           </div>
 
           {submissionMode === 'url' ? (
-            <div>
-              <label htmlFor='url' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Project Link / URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="url"
-                id='url'
-                name='url'
-                value={projectLink}
-                onChange={(e) => setProjectLink(e.target.value)}
-                placeholder="e.g. https://localhost:3000/project"
-                className="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-gray-50/30 font-medium"
-                required={submissionMode === 'url'}
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor='url' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Project Link / URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  id='url'
+                  name='url'
+                  value={projectLink}
+                  onChange={(e) => setProjectLink(e.target.value)}
+                  placeholder="e.g. https://localhost:3000/project"
+                  className="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-gray-50/30 font-medium"
+                  required={submissionMode === 'url'}
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="submit"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  <Send size={15} /> {editId ? "Update Build Submission" : "Send Build to All Testers"}
+                </button>
+                {editId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditId(null);
+                      setProjectName('');
+                      setProjectLink('');
+                    }}
+                    className="py-3 px-5 bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="space-y-3">
-
+            <div className="space-y-3 pt-2">
               <button
                 type="button"
                 onClick={handleShareClick}
@@ -396,28 +419,6 @@ function DeveloperSendProject({ developer }) {
               </button>
             </div>
           )}
-
-          <div className="pt-2 flex gap-3">
-            <button
-              type="submit"
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              <Send size={15} /> {editId ? "Update Build Submission" : "Send Build to All Testers"}
-            </button>
-            {editId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditId(null);
-                  setProjectName('');
-                  setProjectLink('');
-                }}
-                className="py-3 px-5 bg-gray-500 hover:bg-gray-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-              >
-                Cancel Edit
-              </button>
-            )}
-          </div>
         </form>
       </div>
 
@@ -462,7 +463,22 @@ function DeveloperSendProject({ developer }) {
                       <td className="p-4 text-[11px] text-gray-700">
                         {renderLinkOrBadge(linkVal, isLinkFormat)}
                       </td>
-                      <td className="p-4 text-gray-600 whitespace-nowrap">{item.date || 'N/A'}</td>
+                      <td className="p-4 text-gray-600 whitespace-nowrap">
+                        {(() => {
+                          const raw = item.date_submitted || item.created_at;
+                          if (raw) {
+                            const d = new Date(raw);
+                            if (!isNaN(d.getTime())) {
+                              return d.toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }) + ", " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                            }
+                          }
+                          return item.date || 'N/A';
+                        })()}
+                      </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
@@ -480,13 +496,13 @@ function DeveloperSendProject({ developer }) {
                             <Edit2 size={14} />
                           </button>
 
-                          <button
+                          {/* <button
                             onClick={() => handleDeleteSubmission(item.id)}
                             className="p-1.5 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                             title="Delete Submission"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>

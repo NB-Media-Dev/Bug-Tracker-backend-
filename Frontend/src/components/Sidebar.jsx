@@ -22,7 +22,6 @@ export default function Sidebar({
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-100 border-r border-slate-800 transform transition-all duration-300 ease-in-out ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:static md:h-screen md:shrink-0 md:transform-none ${isCollapsed ? "md:w-16" : "md:w-64"}`}
-        aria-hidden={!open}
       >
         <div className="h-full flex flex-col justify-between overflow-hidden">
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -61,7 +60,10 @@ export default function Sidebar({
                   <button
                     key={item.name}
                     type="button"
-                    onClick={() => onNavigate(item.href)}
+                    onClick={() => {
+                      onNavigate(item.href);
+                      if (open) onClose();
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${isActive
                         ? "bg-blue-600 text-white font-semibold shadow-xs"
                         : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60"

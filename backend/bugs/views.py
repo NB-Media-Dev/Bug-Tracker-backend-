@@ -30,11 +30,38 @@ def get_next_bug_id():
     return f'BUG-{max_num + 1}'
 
 
+def reformat_legacy_bug_ids():
+    try:
+        all_bugs = list(BugReport.objects.all().order_by('module', 'id', 'created_at'))
+        proj_counters = {}
+        for bug in all_bugs:
+            proj_name = bug.module or 'General'
+            clean = "".join([c for c in proj_name if c.isalnum() or c.isspace()]).strip()
+            words = [w for w in clean.split() if w]
+            if not words:
+                acronym = "PRJ"
+            elif len(words) > 1:
+                acronym = "".join([w[0] for w in words]).upper()
+            else:
+                w = words[0]
+                acronym = w.upper() if len(w) <= 4 else w[:2].upper()
+
+            proj_counters[acronym] = proj_counters.get(acronym, 0) + 1
+            expected_id = f"{acronym}-{str(proj_counters[acronym]).zfill(3)}"
+
+            if not bug.bug_id or bug.bug_id.startswith('BUG-') or bug.bug_id.startswith('BUG_') or not re.match(rf'^{re.escape(acronym)}-\d+$', str(bug.bug_id), re.IGNORECASE):
+                bug.bug_id = expected_id
+                bug.save(update_fields=['bug_id'])
+    except Exception as e:
+        logger.error(f"Error reformatting legacy bug IDs: {e}")
+
+
 class BugReportListCreateView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
     def get(self, request):
+        reformat_legacy_bug_ids()
         bugs = BugReport.objects.all().order_by('-created_at')
         bugs = self._apply_filters(bugs, request.query_params)
         
@@ -64,11 +91,44 @@ class BugReportListCreateView(APIView):
             
         return bugs
 
+    def _get_next_project_bug_id(self, project_name):
+        acronym = self._get_project_acronym(project_name)
+        existing_bugs = BugReport.objects.filter(
+            Q(module__iexact=project_name) | Q(bug_id__istartswith=f"{acronym}-")
+        )
+        max_seq = 0
+        pattern = re.compile(rf'^{re.escape(acronym)}-(\d+)$', re.IGNORECASE)
+        for b in existing_bugs:
+            if b.bug_id:
+                m = pattern.match(b.bug_id)
+                if m:
+                    try:
+                        seq = int(m.group(1))
+                        if seq > max_seq:
+                            max_seq = seq
+                    except ValueError:
+                        pass
+                else:
+                    m_bug = re.search(r'BUG-(\d+)', str(b.bug_id), re.IGNORECASE)
+                    if m_bug:
+                        try:
+                            val = int(m_bug.group(1))
+                            seq = val % 100 if (100 < val <= 999 and val % 100 != 0) else val
+                            if seq > max_seq:
+                                max_seq = seq
+                        except ValueError:
+                            pass
+        return f"{acronym}-{str(max_seq + 1).zfill(3)}"
+
     def _prepare_bug_data(self, data):
-        incoming_id = str(data.get('bug_id') or data.get('bugId') or '')
-        if not incoming_id or 'SAVED' in incoming_id.upper() or not re.search(r'^BUG-\d+$', incoming_id, re.IGNORECASE):
-            next_id = get_next_bug_id()
+        incoming_id = str(data.get('bug_id') or data.get('bugId') or '').strip()
+        proj_name = data.get('module') or data.get('project_name') or data.get('projectName') or 'General'
+        
+        if not incoming_id or 'SAVED' in incoming_id.upper() or incoming_id.upper().startswith('BUG-'):
+            next_id = self._get_next_project_bug_id(proj_name)
             data['bug_id'] = data['bugId'] = next_id
+        else:
+            data['bug_id'] = data['bugId'] = incoming_id
 
         self._assign_developer_info(data)
         self._assign_tester_info(data)
@@ -147,26 +207,47 @@ class BugReportListCreateView(APIView):
         dev_emp_id = bug.developer_id or dev_id or 'DEV001'
 
         self._create_tester_notification(bug, formatted_bug_id, title, tester_name, tester_email, tester_emp_id, dev_emp_id)
-        self._create_admin_notification(bug, formatted_bug_id, title, tester_name, tester_emp_id)
         self._create_developer_notification(bug, formatted_bug_id, title, tester_name, tester_emp_id, dev_emp_id)
         self._create_cto_project_notification(bug)
 
     def _create_cto_project_notification(self, bug):
         try:
-            proj_name = (bug.module or 'General').strip().upper()
+            proj_name = (getattr(bug, 'module', None) or 'General').strip().upper()
             project_bugs = BugReport.objects.filter(module__iexact=proj_name)
             total_count = project_bugs.count()
-            closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
-            pct = int((closed_count / total_count) * 100) if total_count > 0 else 100
+            closed_count = project_bugs.filter(status__iexact='Closed').count()
+            resolved_or_closed = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved') | Q(status__iexact='Fixed')).count()
+            pct = int((resolved_or_closed / total_count) * 100) if total_count > 0 else 0
+
+            tester_name = getattr(bug, 'tester_name', None) or 'Tester'
+            tester_name_clean = str(tester_name).split('(')[0].strip()
+
+            dev_name = getattr(bug, 'developer_name', None) or getattr(bug, 'developer', None) or 'Developer'
+            dev_name_clean = str(dev_name).split('(')[0].strip()
+
+            all_closed = total_count > 0 and closed_count == total_count
+
+            if all_closed:
+                msg = f'Project {proj_name} fully completed (100% progress)'
+            elif pct == 100 and total_count > 0:
+                msg = f'{proj_name} progress is 100% (Resolved by Developer)'
+            else:
+                msg = f'{proj_name} progress is {pct}%'
+
+            Notification.objects.filter(
+                recipient_role='CTO',
+                project_name__iexact=proj_name,
+                notification_type__in=['project_status_updated', 'project_closed']
+            ).delete()
 
             Notification.objects.create(
                 recipient_email='cto@company.com',
                 recipient_name='CTO',
                 recipient_role='CTO',
                 recipient_id='CTO001',
-                notification_type='project_status_updated',
-                message=f'{proj_name} progress is {pct}%',
-                bug_report=bug,
+                notification_type='project_closed' if all_closed else 'project_status_updated',
+                message=msg,
+                bug_report=bug if isinstance(bug, BugReport) else None,
                 project_name=proj_name
             )
         except Exception as e:
@@ -240,8 +321,6 @@ class BugReportListCreateView(APIView):
             self._send_creation_notifications(bug, dev_id)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 class BugReportDetailView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -327,7 +406,6 @@ class BugReportDetailView(APIView):
 
             norm_status = str(new_status or '').strip().lower()
 
-            # 1. Notifications sent to Developer (when Tester updates status to Open, Closed, Not Fixed)
             if norm_status in ['open', 'closed', 'not fixed', 'not-fixed'] and dev_name and str(dev_name).strip().lower() != 'unassigned':
                 dev_email = ''
                 real_dev_id = dev_id or 'DEV001'
@@ -360,7 +438,6 @@ class BugReportDetailView(APIView):
                     project_name=updated_bug.module or "General"
                 )
 
-            # 2. Notifications sent to Tester (when Developer updates status to Pending, Resolved, Fixed, In Progress)
             if norm_status in ['pending', 'in progress', 'in-progress', 'resolved', 'fixed']:
                 if norm_status == 'pending':
                     t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Pending"'
@@ -392,6 +469,31 @@ class BugReportDetailView(APIView):
                     message=t_msg,
                     bug_report=updated_bug,
                     project_name=updated_bug.module or "General"
+                )
+
+            if norm_status in ['not fixed', 'not-fixed']:
+                not_fixed_msg = f'Tester {tester_name_clean} marked bug [{formatted_id}] as "Not Fixed" in project "{proj_name}"'
+                Notification.objects.create(
+                    recipient_email='cto@company.com',
+                    recipient_name='CTO',
+                    recipient_role='CTO',
+                    recipient_id='CTO001',
+                    notification_type='not_fixed_alert',
+                    message=not_fixed_msg,
+                    bug_report=updated_bug,
+                    project_name=proj_name
+                )
+            elif norm_status in ['resolved', 'fixed']:
+                dev_resolved_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Resolved" in project "{proj_name}"'
+                Notification.objects.create(
+                    recipient_email='cto@company.com',
+                    recipient_name='CTO',
+                    recipient_role='CTO',
+                    recipient_id='CTO001',
+                    notification_type='bug_resolved_alert',
+                    message=dev_resolved_msg,
+                    bug_report=updated_bug,
+                    project_name=proj_name
                 )
 
             self._create_cto_project_notification(updated_bug)
@@ -448,7 +550,8 @@ class NotificationListCreateView(APIView):
         if role and role.strip().upper() == 'CTO':
             notifications = notifications.filter(
                 Q(recipient_role__iexact='CTO') |
-                Q(notification_type__in=['project_status_updated', 'project_submitted'])
+                Q(recipient_id__iexact='CTO001') |
+                Q(recipient_email__iexact='cto@company.com')
             )
             serializer = NotificationSerializer(notifications, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -503,7 +606,12 @@ def generate_submission_id(dev_id, project_name):
         acronym = "".join(w[0] for w in words).lower()
     elif len(words) == 1:
         w = words[0].lower()
-        acronym = w[:3] if len(w) >= 3 else w
+        if len(w) <= 4:
+            acronym = w
+        elif w.startswith("auth"):
+            acronym = "auth"
+        else:
+            acronym = w[:3]
     else:
         acronym = "prj"
         
@@ -538,7 +646,12 @@ def reformat_legacy_submission_ids():
                 acronym = "".join(w[0] for w in words).lower()
             elif len(words) == 1:
                 w = words[0].lower()
-                acronym = w[:3] if len(w) >= 3 else w
+                if len(w) <= 4:
+                    acronym = w
+                elif w.startswith("auth"):
+                    acronym = "auth"
+                else:
+                    acronym = w[:3]
             else:
                 acronym = "prj"
 
@@ -562,10 +675,8 @@ def reformat_legacy_submission_ids():
                     'claimed_by_id': sub.claimed_by_id,
                 }
                 with transaction.atomic():
-                    Testing.objects.filter(project_name=sub.project_name).update(project_name=sub.project_name)
-                    Notification.objects.filter(project_name=sub.project_name).update(project_name=sub.project_name)
-                    old_qs = ProjectSubmission.objects.filter(id=sub.id)
-                    old_qs.delete()
+                    old_id = sub.id
+                    ProjectSubmission.objects.filter(id=old_id).delete()
                     ProjectSubmission.objects.create(**sub_dict)
     except Exception as e:
         logger.error(f"Error reformatting legacy submission IDs: {e}")
@@ -644,35 +755,25 @@ class ProjectSubmissionListCreateView(APIView):
                     sender_id=dev_id
                 )
 
-        Notification.objects.create(
-            recipient_email='vasan11@gmail.com',
-            recipient_name='Admin',
-            recipient_role='Admin',
-            recipient_id='ADM001',
-            notification_type='project_submitted',
-            message=sub_msg,
-            bug_report=None,
-            project_name=submission.project_name,
-            sender_id=dev_id
-        )
-
         proj_name = (submission.project_name or 'General').strip().upper()
         project_bugs = BugReport.objects.filter(module__iexact=proj_name)
         total_count = project_bugs.count()
         closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
         pct = int((closed_count / total_count) * 100) if total_count > 0 else 0
 
-        Notification.objects.create(
-            recipient_email='cto@company.com',
-            recipient_name='CTO',
-            recipient_role='CTO',
-            recipient_id='CTO001',
-            notification_type='project_status_updated',
-            message=f'{proj_name} progress is {pct}%',
-            bug_report=None,
-            project_name=submission.project_name,
-            sender_id=dev_id
-        )
+        cto_sub_msg = f'{dev_label} submitted project build: "{submission.project_name}"'
+        if not Notification.objects.filter(recipient_role='CTO', message=cto_sub_msg).exists():
+            Notification.objects.create(
+                recipient_email='cto@company.com',
+                recipient_name='CTO',
+                recipient_role='CTO',
+                recipient_id='CTO001',
+                notification_type='project_submitted',
+                message=cto_sub_msg,
+                bug_report=None,
+                project_name=submission.project_name,
+                sender_id=dev_id
+            )
 
         dev_email = ''
         try:
@@ -765,6 +866,20 @@ class ProjectSubmissionDetailView(APIView):
             sender_id=dev_id
         )
 
+        cto_claim_msg = f'Tester {claimed_by} accepted project build "{updated_sub.project_name}"'
+        if not Notification.objects.filter(recipient_role='CTO', message=cto_claim_msg).exists():
+            Notification.objects.create(
+                recipient_email='cto@company.com',
+                recipient_name='CTO',
+                recipient_role='CTO',
+                recipient_id='CTO001',
+                notification_type='project_accepted',
+                message=cto_claim_msg,
+                bug_report=None,
+                project_name=updated_sub.project_name,
+                sender_id=dev_id
+            )
+
     def patch(self, request, pk):
         submission = get_object_or_404(ProjectSubmission, pk=pk)
         old_project_name = submission.project_name
@@ -801,17 +916,12 @@ class ProjectSubmissionDetailView(APIView):
     def delete(self, request, pk):
         try:
             submission = ProjectSubmission.objects.get(pk=pk)
-            project_name = submission.project_name
-            sender_id = submission.developer_id or "DEV001"
-            
             with transaction.atomic():
-                Testing.objects.filter(project_name=project_name, sender_id=sender_id).delete()
-                Notification.objects.filter(project_name=project_name, sender_id=sender_id).delete()
                 submission.delete()
                 
             return Response({
                 "success": True,
-                "message": "Project and all related records deleted successfully."
+                "message": "Project submission deleted successfully."
             }, status=status.HTTP_200_OK)
             
         except ProjectSubmission.DoesNotExist:

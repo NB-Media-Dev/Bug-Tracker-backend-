@@ -1733,7 +1733,7 @@ function Reportform({ onNavigate }) {
             this list.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto ">
             <div style={{}}></div>
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -1753,7 +1753,7 @@ function Reportform({ onNavigate }) {
                   <th className="p-3 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
+              <tbody className="divide-y divide-gray-100 font-medium text-gray-700   ">
                 {submittedBugs.map((bug, index) => (
                   <tr
                     key={bug.id}
@@ -2157,7 +2157,7 @@ function Reportform({ onNavigate }) {
 
       {showBackModal && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-md w-full p-6 text-left space-y-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-md w-full max-h-[90vh] overflow-y-auto p-6 text-left space-y-4 custom-scrollbar">
             <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
                 <Save size={20} />

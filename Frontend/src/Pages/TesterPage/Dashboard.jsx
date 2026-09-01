@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { getTesterInfo, matchesTester, matchesSubmissionTester } from "../../lib/utils";
+import { getTesterInfo, matchesTester, matchesSubmissionTester, truncateText } from "../../lib/utils";
 
 function Dashboard({ onNavigate }) {
   const tester_user = JSON.parse(localStorage.getItem("tester_user")) || { name: "QA Tester" };
@@ -350,7 +350,7 @@ function Dashboard({ onNavigate }) {
             )}
           </div>
 
-          <div className="mt-3">
+          <div className="mt-3 max-h-[300px] overflow-y-auto pr-1">
             {projectList.length === 0 ? (
               <div className="text-center py-8 text-xs text-gray-400 italic">No project reports yet.</div>
             ) : (
@@ -393,7 +393,7 @@ function Dashboard({ onNavigate }) {
           </div>
         </div>
 
-        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl shadow-2xs border border-gray-200 overflow-hidden flex flex-col">
+        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl shadow-2xs border border-gray-200 overflow-hidden flex flex-col h-95">
           <div className="p-3 border-b border-gray-100 bg-blue-50/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="text-blue-600" size={16} />
@@ -432,7 +432,7 @@ function Dashboard({ onNavigate }) {
                 )}
 
               {oldNotifications.length > oldNotifsPerPage && (
-                <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg text-[10px] text-gray-500">
+                <div className="flex items-center justify-between p-2  bg-gray-50 border border-gray-200 rounded-lg text-[10px] text-gray-500">
                   <button
                     disabled={oldNotifPage === 1}
                     onClick={() => setOldNotifPage((prev) => Math.max(1, prev - 1))}

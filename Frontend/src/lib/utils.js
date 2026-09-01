@@ -5,9 +5,6 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// ---------------------------------------------------------------------------
-// Bug ID formatters
-// ---------------------------------------------------------------------------
 export const getProjectAcronym = (projectName) => {
   if (!projectName?.trim()) return "PRJ";
   const clean = projectName.trim().replace(/[^a-zA-Z0-9\s]/g, "");
@@ -23,14 +20,8 @@ export const getProjectAcronym = (projectName) => {
 
 export const formatBugId = (b, projectIndex = null) => {
   if (!b) return "PRJ-001";
-  if (typeof b === "string" || typeof b === "number") {
-    const str = String(b);
-    const numStr = str.replace(/\D/g, "");
-    const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
-    return `PRJ-${seq}`;
-  }
 
-  const proj = b.module || b.project_name || b.projectName || "General";
+  const proj = (typeof b === "object" ? (b.module || b.project_name || b.projectName || "") : "") || "General";
   const acronym = getProjectAcronym(proj);
 
   if (projectIndex !== null && projectIndex !== undefined) {
@@ -38,10 +29,35 @@ export const formatBugId = (b, projectIndex = null) => {
     return `${acronym}-${seq}`;
   }
 
-  const raw = String(b.bugId || b.bug_id || b.id || b.rawId || "");
-  const numStr = raw.replace(/\D/g, "");
-  const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
-  return `${acronym}-${seq}`;
+  if (typeof b === "string" || typeof b === "number") {
+    const str = String(b).trim();
+    const match = str.match(/^(?:([a-zA-Z0-9]+)-)?(\d+)$/);
+    if (match) {
+      const prefix = match[1] && !["BUG", "PRJ", "GE"].includes(match[1].toUpperCase()) ? match[1].toUpperCase() : acronym;
+      const numVal = parseInt(match[2], 10);
+      const seq = String((numVal > 100 && numVal <= 999 && numVal % 100 !== 0 ? numVal % 100 : numVal) || 1).padStart(3, "0");
+      return `${prefix}-${seq}`;
+    }
+    return `${acronym}-001`;
+  }
+
+  const raw = String(b.bugId || b.bug_id || b.id || b.rawId || "").trim();
+  if (raw) {
+    const hyphenMatch = raw.match(/^([a-zA-Z0-9]+)-(\d+)$/);
+    if (hyphenMatch) {
+      const prefix = !["BUG", "PRJ", "GE"].includes(hyphenMatch[1].toUpperCase()) ? hyphenMatch[1].toUpperCase() : acronym;
+      const numVal = parseInt(hyphenMatch[2], 10);
+      const seq = String((numVal > 100 && numVal <= 999 && numVal % 100 !== 0 ? numVal % 100 : numVal) || 1).padStart(3, "0");
+      return `${prefix}-${seq}`;
+    }
+    if (/^\d+$/.test(raw)) {
+      const numVal = parseInt(raw, 10);
+      const seq = String((numVal > 100 && numVal <= 999 && numVal % 100 !== 0 ? numVal % 100 : numVal) || 1).padStart(3, "0");
+      return `${acronym}-${seq}`;
+    }
+  }
+
+  return `${acronym}-001`;
 };
 
 export const generateContinuousBugId = (allExistingBugs = [], localDrafts = [], projectName = "General") => {
@@ -66,36 +82,72 @@ export const formatNotificationMessage = (message, projectName = "General", bugs
   cleaned = cleaned.replace(/^Developer\s+/i, "");
   cleaned = cleaned.replace(/\(([A-Za-z0-9]+)\)\s*\(\1\)/gi, "($1)");
 
-  if (cleaned.startsWith("Project:") || cleaned.toLowerCase().includes("| status:")) {
-    const parts = cleaned.split("|");
-    const pName = (projectName && projectName !== "General" ? projectName : parts[0].replace(/Project:/i, "").trim()).toUpperCase();
-    
+  const msgLower = cleaned.toLowerCase();
+  if (
+    cleaned.startsWith("Project:") ||
+    msgLower.includes("| status:") ||
+    msgLower.includes("progress is") ||
+    msgLower.includes("fully completed")
+  ) {
+    let pName = (projectName && projectName !== "General" ? projectName : "").trim().toUpperCase();
+    if (!pName) {
+      const match = cleaned.match(/^([A-Za-z0-9_\-\s]+)\s+progress/i) || cleaned.match(/^Project\s+([A-Za-z0-9_\-\s]+)/i);
+      if (match) {
+        pName = match[1].trim().toUpperCase();
+      } else {
+        pName = cleaned.split(" ")[0].trim().toUpperCase();
+      }
+    }
+
     let pct = 0;
+    let allClosed = false;
+    let allResolved = false;
+
     if (Array.isArray(bugsList) && bugsList.length > 0) {
-      const projBugs = bugsList.filter(b => (b.module || b.project_name || "").trim().toUpperCase() === pName);
+      const projBugs = bugsList.filter((b) => (b.module || b.project_name || "").trim().toUpperCase() === pName);
       if (projBugs.length > 0) {
-        const closed = projBugs.filter(b => ['Closed', 'Resolved'].includes((b.status || b.testerStatus || '').toString())).length;
-        pct = Math.round((closed / projBugs.length) * 100);
+        const closedCount = projBugs.filter((b) => (b.status || b.testerStatus || "").toString().toLowerCase() === "closed").length;
+        const resolvedCount = projBugs.filter((b) => ["closed", "resolved", "fixed"].includes((b.status || b.testerStatus || "").toString().toLowerCase())).length;
+        allClosed = closedCount === projBugs.length;
+        allResolved = resolvedCount === projBugs.length;
+        pct = Math.round((resolvedCount / projBugs.length) * 100);
       } else {
         pct = 0;
       }
     } else {
-      pct = cleaned.toLowerCase().includes("completed") ? 100 : 0;
+      const pctMatch = cleaned.match(/(\d+)%/);
+      if (pctMatch) {
+        pct = parseInt(pctMatch[1], 10);
+      }
+      allClosed = msgLower.includes("closed the project") || msgLower.includes("closed all bugs") || msgLower.includes("fully completed");
     }
+
+    // ONLY when tester verified and closed all bugs:
+    if (allClosed) {
+      return `Project ${pName} fully completed (100% progress)`;
+    }
+
+    if (allResolved && pct === 100) {
+      return `${pName} progress is 100% (Resolved by Developer)`;
+    }
+
     return `${pName} progress is ${pct}%`;
   }
 
   return cleaned.replace(/(\[?([A-Z0-9]+-\d+|\bBUG-\d+|\bGE-\d+)\]?)/gi, (match, fullMatch, bugIdStr) => {
     const parts = bugIdStr.split("-");
     if (parts.length === 2 && parts[0] && !["BUG", "PRJ", "GE"].includes(parts[0].toUpperCase())) {
-      const numStr = parts[1].replace(/\D/g, "");
-      const seq = numStr ? String(parseInt(numStr, 10)).padStart(3, "0") : "001";
+      const numVal = parseInt(parts[1], 10);
+      const seq = !isNaN(numVal) ? String((numVal > 100 && numVal <= 999 && numVal % 100 !== 0 ? numVal % 100 : numVal) || 1).padStart(3, "0") : "001";
       const formattedId = `${parts[0].toUpperCase()}-${seq}`;
       return match.startsWith("[") ? `[${formattedId}]` : formattedId;
     }
 
-    const num = bugIdStr.replace(/\D/g, "");
-    const formatted = formatBugId({ id: num, module: projectName });
+    const lastPart = parts[parts.length - 1];
+    const numVal = parseInt(lastPart, 10);
+    const seq = !isNaN(numVal) ? String((numVal > 100 && numVal <= 999 && numVal % 100 !== 0 ? numVal % 100 : numVal) || 1).padStart(3, "0") : "001";
+    const acronym = getProjectAcronym(projectName);
+    const formatted = `${acronym}-${seq}`;
     if (match.startsWith("[")) {
       return `[${formatted}]`;
     }
@@ -130,9 +182,6 @@ export const normalizeFiles = (filesInput) => {
   });
 };
 
-// ---------------------------------------------------------------------------
-// Standard Date Formatter for consistent Start Date / End Date displays
-// ---------------------------------------------------------------------------
 export const formatDateStandard = (dateVal) => {
   if (!dateVal || dateVal === "N/A" || dateVal === "null" || dateVal === "undefined") return "N/A";
   
@@ -146,9 +195,6 @@ export const formatDateStandard = (dateVal) => {
   });
 };
 
-// ---------------------------------------------------------------------------
-// Normalize a raw API bug object into the standard shape used across all pages
-// ---------------------------------------------------------------------------
 export const normalizeBug = (b, fallbacks = {}) => {
   const formattedAssigned = formatDateStandard(b.assignedOn || b.assigned_on || new Date());
   const formattedDue = formatDateStandard(b.dueDate || b.due_date);
@@ -181,9 +227,6 @@ export const normalizeBug = (b, fallbacks = {}) => {
   };
 };
 
-// ---------------------------------------------------------------------------
-// Download a URL as a file via a temporary <a> tag  (blob or encoded-URI)
-// ---------------------------------------------------------------------------
 export const downloadFile = (hrefOrBlob, filename) => {
   const url =
     hrefOrBlob instanceof Blob
@@ -202,18 +245,12 @@ export const downloadFile = (hrefOrBlob, filename) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Escape a field for CSV export
-// ---------------------------------------------------------------------------
 export const escapeCSV = (val) => {
   if (val === null || val === undefined) return '""';
   const str = String(val).replaceAll('"', '""');
   return `"${str}"`;
 };
 
-// ---------------------------------------------------------------------------
-// Build a CSV data-URI and trigger a download
-// ---------------------------------------------------------------------------
 export const downloadCsv = (headers, rows, filename) => {
   const csvContent =
     "data:text/csv;charset=utf-8,\uFEFF" +
@@ -221,9 +258,6 @@ export const downloadCsv = (headers, rows, filename) => {
   downloadFile(encodeURI(csvContent), filename);
 };
 
-// ---------------------------------------------------------------------------
-// Navigation helper — uses onNavigate callback if provided, else popstate
-// ---------------------------------------------------------------------------
 export const navigateTo = (path, onNavigate) => {
   if (typeof onNavigate === "function") {
     onNavigate(path);
@@ -233,9 +267,6 @@ export const navigateTo = (path, onNavigate) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Read tester info from localStorage (used by Mybugreport + HistoryReport)
-// ---------------------------------------------------------------------------
 export const getTesterInfo = () => {
   try {
     const tUser = JSON.parse(localStorage.getItem("tester_user") || "{}");
@@ -250,9 +281,6 @@ export const getTesterInfo = () => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Match a bug to a tester by id / email / name (used by HistoryReport)
-// ---------------------------------------------------------------------------
 export const matchesTester = (bug, testerName, testerEmail, testerId) => {
   const norm = (v) => (v || "").trim().toLowerCase();
   if (testerId && norm(bug.tester_id || bug.testerId) === norm(testerId)) return true;
@@ -260,10 +288,6 @@ export const matchesTester = (bug, testerName, testerEmail, testerId) => {
   if (testerName && norm(bug.tester_name || bug.testerName) === norm(testerName)) return true;
   return false;
 };
-
-// ---------------------------------------------------------------------------
-// Match a project submission to a tester by claimedById / claimedBy
-// ---------------------------------------------------------------------------
 export const matchesSubmissionTester = (sub, testerName, testerEmail, testerId) => {
   if (!sub) return false;
   const norm = (v) => (v || "").trim().toLowerCase();
@@ -274,10 +298,6 @@ export const matchesSubmissionTester = (sub, testerName, testerEmail, testerId) 
   if (testerName && claimedBy && claimedBy === norm(testerName)) return true;
   return false;
 };
-
-// ---------------------------------------------------------------------------
-// Read developer info from localStorage or prop (used across Developer pages)
-// ---------------------------------------------------------------------------
 export const getDeveloperInfo = (propDeveloper = null) => {
   try {
     const dUser = JSON.parse(localStorage.getItem("developer_user") || "{}");
@@ -299,10 +319,6 @@ export const getDeveloperInfo = (propDeveloper = null) => {
     };
   }
 };
-
-// ---------------------------------------------------------------------------
-// Match a bug/item to a developer by id / email / name (used across Developer pages)
-// ---------------------------------------------------------------------------
 export const matchesDeveloper = (bug, devName, devEmail, devId) => {
   if (!bug) return false;
   const norm = (v) => (v || "").toString().trim().toLowerCase();
@@ -321,31 +337,12 @@ export const matchesDeveloper = (bug, devName, devEmail, devId) => {
 
   return false;
 };
-
-// ---------------------------------------------------------------------------
-// Format Project Submission ID as dev003-nmw-001
-// ---------------------------------------------------------------------------
 export const formatSubmissionId = (sub) => {
-  if (!sub) return "dev001-prj-001";
+  if (!sub) return "prj-001";
   const idStr = String(sub.id || sub.pk || "").trim();
 
-  if (/^[a-z0-9]+-[a-z0-9]+-\d{3,}$/i.test(idStr) && !idStr.toUpperCase().startsWith("SUB-") && !idStr.toUpperCase().startsWith("BUILD-")) {
-    return idStr.toLowerCase();
-  }
-
-  const rawDevId = sub.developer_id || sub.developerId || "DEV001";
-  const cleanDevId = String(rawDevId).replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "dev001";
-
   const rawProj = sub.project_name || sub.projectName || sub.project || "PRJ";
-  const words = String(rawProj).trim().match(/[a-zA-Z0-9]+/g) || [];
-
-  let acronym = "prj";
-  if (words.length > 1) {
-    acronym = words.map((w) => w[0]).join("").toLowerCase();
-  } else if (words.length === 1) {
-    const w = words[0].toLowerCase();
-    acronym = w.slice(0, 3);
-  }
+  const acronym = getProjectAcronym(rawProj).toLowerCase();
 
   const numMatch = idStr.match(/\d+$/);
   let seq = "001";
@@ -354,13 +351,8 @@ export const formatSubmissionId = (sub) => {
     seq = String((rawNum % 100) || 1).padStart(3, "0");
   }
 
-  return `${cleanDevId}-${acronym}-${seq}`;
+  return `${acronym}-${seq}`;
 };
-
-
-// ---------------------------------------------------------------------------
-// Status badge styling (used across 5+ pages)
-// ---------------------------------------------------------------------------
 export const getStatusBadgeStyle = (status) => {
   switch (status) {
     case "Open":
@@ -379,10 +371,6 @@ export const getStatusBadgeStyle = (status) => {
       return "bg-gray-100 text-gray-600 border-gray-300";
   }
 };
-
-// ---------------------------------------------------------------------------
-// Render steps-to-reproduce text as a cleaned list
-// ---------------------------------------------------------------------------
 export const parseStepsText = (stepsText) => {
   if (!stepsText?.trim()) return [];
   return stepsText
@@ -391,3 +379,12 @@ export const parseStepsText = (stepsText) => {
     .filter((l) => l.length > 0)
     .map((line) => line.replace(/^[-*•\d+.]\s*/, ""));
 };
+export const truncateText = (text, maxWords = 20) => {
+  if (!text) return "";
+  const str = String(text).trim();
+  if (!str) return "";
+  const words = str.split(/\s+/);
+  if (words.length <= maxWords) return str;
+  return words.slice(0, maxWords).join(" ") + "...";
+};
+

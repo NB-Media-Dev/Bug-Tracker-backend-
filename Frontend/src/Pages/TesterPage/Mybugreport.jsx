@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, matchesTester, matchesSubmissionTester, escapeCSV, formatDateStandard } from "../../lib/utils";
+import { getProjectAcronym, normalizeBug, navigateTo, downloadFile, getTesterInfo, matchesTester, matchesSubmissionTester, escapeCSV, formatDateStandard, truncateText } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function Mybugreport({ onNavigate }) {
@@ -174,13 +174,22 @@ function Mybugreport({ onNavigate }) {
   React.useEffect(() => {
     loadBugs();
     loadAcceptedSubmissions();
+
+    const interval = setInterval(() => {
+      loadBugs();
+      loadAcceptedSubmissions();
+    }, 3000);
+
     const handleReload = () => {
       loadBugs();
       loadAcceptedSubmissions();
     };
     window.addEventListener("notifications_updated", handleReload);
+    window.addEventListener("bugs_updated", handleReload);
     return () => {
+      clearInterval(interval);
       window.removeEventListener("notifications_updated", handleReload);
+      window.removeEventListener("bugs_updated", handleReload);
     };
   }, []);
 
@@ -308,8 +317,8 @@ function Mybugreport({ onNavigate }) {
     if (!editingBug) return;
 
     try {
-      const response = await fetch(
-        `${API_BASE}/api/bugs/${editingBug.rawId || editingBug.id}/`,
+      const response = await authFetch(
+        `/api/bugs/${editingBug.rawId || editingBug.id}/`,
         {
           method: "PATCH",
           headers: {
@@ -622,7 +631,17 @@ function Mybugreport({ onNavigate }) {
 
 
   const projectBugCounts = {};
-  const rawCombinedBugs = [...bugs, ...normalizedSavedBugs];
+  const seenBugKeys = new Set();
+  const rawCombinedBugs = [];
+  [...bugs, ...normalizedSavedBugs].forEach((b) => {
+    const key = b.rawId && !String(b.rawId).startsWith("saved-")
+      ? `id-${b.rawId}`
+      : `title-${(b.module || "General").trim().toUpperCase()}||${(b.title || "").trim().toLowerCase()}`;
+    if (!seenBugKeys.has(key)) {
+      seenBugKeys.add(key);
+      rawCombinedBugs.push(b);
+    }
+  });
 
   const chronologicalBugs = [...rawCombinedBugs].sort((a, b) => {
     const numA = typeof a.rawId === "number" ? a.rawId : (parseInt(String(a.rawId || a.id).replace(/\D/g, ""), 10) || 0);
@@ -699,23 +718,25 @@ function Mybugreport({ onNavigate }) {
 
   const groupedProjects = filteredBugs.reduce((acc, bug) => {
     const projectName = (bug.module || "General").trim().toUpperCase();
-    const developerId = (bug.developerId || bug.developer || "Unassigned")
-      .toString()
-      .trim()
-      .toUpperCase();
-    const groupKey = `${projectName}||${developerId}`;
 
-    if (!acc[groupKey]) {
-      acc[groupKey] = {
+    if (!acc[projectName]) {
+      acc[projectName] = {
         projectName,
         developer: bug.developer || "Unassigned",
         developerId: bug.developerId || "N/A",
         bugs: [],
       };
     }
-    acc[groupKey].bugs.push(bug);
+    acc[projectName].bugs.push(bug);
+    // Sort bugs in ascending order (QU1-001, QU1-002, QU1-003)
+    acc[projectName].bugs.sort((a, b) => {
+      const idA = String(a.bugId || a.id || "");
+      const idB = String(b.bugId || b.id || "");
+      return idA.localeCompare(idB, undefined, { numeric: true });
+    });
     return acc;
   }, {});
+
 
   const allAcceptedSubmissions = (acceptedSubmissions || []).filter(
     (s) => s.status === 'Accepted' || Boolean(s.claimedBy || s.claimed_by)
@@ -735,10 +756,9 @@ function Mybugreport({ onNavigate }) {
 
     const devName = sub.developer_name || sub.developerName || sub.developer || "Unassigned";
     const devId = sub.developer_id || sub.developerId || "DEV001";
-    const groupKey = `${projName}||${devId.trim().toUpperCase()}`;
 
-    if (!groupedProjects[groupKey]) {
-      groupedProjects[groupKey] = {
+    if (!groupedProjects[projName]) {
+      groupedProjects[projName] = {
         projectName: projName,
         developer: devName,
         developerId: devId,
@@ -746,6 +766,11 @@ function Mybugreport({ onNavigate }) {
         isAcceptedBuild: true,
         version: sub.version || 'v0.1',
       };
+    } else {
+      if (groupedProjects[projName].developer === "Unassigned" && devName && devName !== "Unassigned") {
+        groupedProjects[projName].developer = devName;
+        groupedProjects[projName].developerId = devId;
+      }
     }
   });
 
@@ -761,7 +786,7 @@ function Mybugreport({ onNavigate }) {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 font-sans text-gray-800 antialiased p-4 sm:p-5">
+    <div className="w-full max-w-[1800px] mx-auto space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -884,7 +909,8 @@ function Mybugreport({ onNavigate }) {
               key={groupKey}
               className={`bg-white rounded-2xl shadow-2xs border overflow-hidden transition-all duration-200 ${allClosed ? "border-emerald-300 ring-1 ring-emerald-200" : "border-gray-200 hover:border-blue-300"}`}
             >
-              <button
+              <div
+                role="button"
                 tabIndex={0}
                 onClick={() => toggleProjectExpand(groupKey)}
                 onKeyDown={(e) => {
@@ -929,22 +955,26 @@ function Mybugreport({ onNavigate }) {
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-1 w-full text-left flex items-center gap-2">
-                      <Clock size={12} className="text-gray-400" />
-                      <span className="truncate">
-                        Assigned Developer:{" "}
-                        <strong className="text-gray-700 uppercase">
-                          {developer} ({developerId})
-                        </strong>
-                      </span>
-                      <span className="text-gray-300">•</span>
-                      <span className="text-gray-700 font-medium">
-                        Date:{" "}
-                        <strong className="text-gray-700">{latestDate}</strong>
-                      </span>
-                    </p>
+                    <div className="text-xs text-gray-500 mt-1.5 w-full text-left flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Clock size={13} className="text-gray-400 shrink-0" />
+                        <span className="font-medium">
+                          Assigned Developer:{" "}
+                          <strong className="text-gray-800 uppercase font-bold">
+                            {developer} ({developerId})
+                          </strong>
+                        </span>
+                      </div>
+                      <span className="text-gray-300 hidden sm:inline">•</span>
+                      <div className="flex items-center gap-1 shrink-0 text-gray-700 font-medium">
+                        <span>
+                          Date:{" "}
+                          <strong className="text-gray-800 font-bold">{latestDate}</strong>
+                        </span>
+                      </div>
+                    </div>
 
-                    <div className="pt-2 hidden sm:flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 pt-2.5 mt-1 w-full">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1033,7 +1063,7 @@ function Mybugreport({ onNavigate }) {
                     )}
                   </button>
                 </div>
-              </button>
+              </div>
 
               {isExpanded && (
                 <div className="overflow-x-auto animate-in fade-in duration-200">
@@ -1041,7 +1071,7 @@ function Mybugreport({ onNavigate }) {
                     <thead>
                       <tr className="bg-slate-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                         <th className="px-3 py-2.5 w-28">Bug ID</th>
-                        <th className="px-3 py-2.5">Title / Summary</th>
+                        <th className="px-3 py-2.5">Title</th>
                         <th className="px-3 py-2.5">Tester</th>
                         <th className="px-3 py-2.5">Developer</th>
                         <th className="px-3 py-2.5 w-28">Start Date</th>
@@ -1099,16 +1129,16 @@ function Mybugreport({ onNavigate }) {
                               <span
                                 className={`font-bold text-gray-900 block break-words break-all leading-snug ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}
                               >
-                                {bug.title}
+                                {truncateText(bug.title, 20)}
                               </span>
-                              {bug.description && (
+                              {/* {bug.description && (
                                 <p className="text-[11px] text-gray-600 mt-1 break-words break-all line-clamp-2 leading-relaxed">
                                   {bug.description}
                                 </p>
                               )}
                               <span className="text-[10px] text-gray-500 font-medium block mt-1">
                                 Module: {bug.module}
-                              </span>
+                              </span> */}
                             </td>
                             <td
                               className={`px-3 py-2.5 text-gray-800 font-semibold uppercase ${isClosed ? "line-through text-red-500 opacity-75" : ""}`}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { History, Download, Eye } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { downloadFile, escapeCSV, formatDateStandard, getProjectAcronym } from "../../lib/utils";
+import { downloadFile, escapeCSV, formatDateStandard, getProjectAcronym, truncateText } from "../../lib/utils";
 
 function DeveloperHistory({ developer }) {
   const [historyLogs, setHistoryLogs] = useState([]);
@@ -113,17 +113,32 @@ function DeveloperHistory({ developer }) {
 
     chronological.forEach((item) => {
       const projAcronym = getProjectAcronym(item.module);
-      projectBugCounts[projAcronym] = (projectBugCounts[projAcronym] || 0) + 1;
-      const sequenceNum = String(projectBugCounts[projAcronym]).padStart(3, "0");
-      const customBugId = `${projAcronym}-${sequenceNum}`;
-      const key = item.rawId;
-      bugIdMap.set(key, customBugId);
+      if (item.type === "project_build") {
+        // Project builds show only the project code (e.g. QU1, TP) without bug sequence numbers
+        bugIdMap.set(item.rawId, projAcronym);
+      } else {
+        // Actual bug reports get sequential numbering (e.g. TW-001, QU1-001)
+        projectBugCounts[projAcronym] = (projectBugCounts[projAcronym] || 0) + 1;
+        const sequenceNum = String(projectBugCounts[projAcronym]).padStart(3, "0");
+        const customBugId = `${projAcronym}-${sequenceNum}`;
+        bugIdMap.set(item.rawId, customBugId);
+      }
+    });
+
+    const projectFirstArrival = {};
+    rawCombined.forEach((item) => {
+      const p = (item.module || "General").trim().toUpperCase();
+      const rawNum = typeof item.rawId === 'number' ? item.rawId : (parseInt(String(item.rawId).replace(/\D/g, ''), 10) || 999999);
+      if (projectFirstArrival[p] === undefined || rawNum < projectFirstArrival[p]) {
+        projectFirstArrival[p] = rawNum;
+      }
     });
 
     const combined = rawCombined
       .map((item) => {
         const key = item.rawId;
-        const customBugId = bugIdMap.get(key) || item.rawId;
+        const projAcronym = getProjectAcronym(item.module);
+        const customBugId = bugIdMap.get(key) || (item.type === "project_build" ? projAcronym : item.rawId);
         return {
           ...item,
           id: item.rawId || customBugId,
@@ -132,12 +147,18 @@ function DeveloperHistory({ developer }) {
         };
       })
       .sort((a, b) => {
-        const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId).replace(/\D/g, ''), 10) || 0);
-        const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId).replace(/\D/g, ''), 10) || 0);
-        if (numA !== numB) return numA - numB;
-        const dateA = new Date(a.assignedOn || 0).getTime();
-        const dateB = new Date(b.assignedOn || 0).getTime();
-        return dateA - dateB;
+        const projA = (a.module || "General").trim().toUpperCase();
+        const projB = (b.module || "General").trim().toUpperCase();
+        if (projA !== projB) {
+          const orderA = projectFirstArrival[projA] ?? 999999;
+          const orderB = projectFirstArrival[projB] ?? 999999;
+          if (orderA !== orderB) return orderA - orderB;
+          return projA.localeCompare(projB);
+        }
+
+        const idA = String(a.bugId || a.id || "");
+        const idB = String(b.bugId || b.id || "");
+        return idA.localeCompare(idB, undefined, { numeric: true });
       });
 
     setHistoryLogs(combined);
@@ -145,6 +166,14 @@ function DeveloperHistory({ developer }) {
 
   useEffect(() => {
     loadHistory();
+    const interval = setInterval(loadHistory, 3000);
+    window.addEventListener("notifications_updated", loadHistory);
+    window.addEventListener("bugs_updated", loadHistory);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("notifications_updated", loadHistory);
+      window.removeEventListener("bugs_updated", loadHistory);
+    };
   }, [devName, devId]);
 
   const projectsList = [
@@ -231,7 +260,7 @@ function DeveloperHistory({ developer }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans text-gray-800 antialiased">
+    <div className="w-full max-w-[1800px] mx-auto space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -376,7 +405,7 @@ function DeveloperHistory({ developer }) {
                         onClick={() => setViewingHistory(log)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-2xs transition-colors cursor-pointer"
                       >
-                        <Eye size={13} /> View Log
+                        <Eye size={13} /> View 
                       </button>
                     </td>
                   </tr>
@@ -424,18 +453,18 @@ function DeveloperHistory({ developer }) {
             <div className="p-6 space-y-4 text-xs">
               <div>
                 <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Bug Title
+                   project /Bug Title 
                 </h4>
-                <p className="text-sm font-bold text-gray-900 mt-0.5">
+                <p className="text-sm font-bold text-gray-900 mt-0.5 break-words break-all leading-snug">
                   {viewingHistory.title}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                  Description
+                  project link /Description 
                 </h4>
-                <p className="text-gray-700 mt-1 bg-gray-50 p-2.5 rounded border border-gray-200 whitespace-pre-wrap">
+                <p className="text-gray-700 mt-1 bg-gray-50 p-2.5 rounded border border-gray-200 whitespace-pre-wrap break-words break-all leading-relaxed max-h-44 overflow-y-auto">
                   {viewingHistory.description || "No description provided."}
                 </p>
               </div>
@@ -483,7 +512,7 @@ function DeveloperHistory({ developer }) {
                 <div>
                   <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
                     Start Date
-                  </h4>
+                  </h4> 
                   <p className="text-gray-900 font-mono mt-1 font-semibold">
                     {viewingHistory.assignedOn || "N/A"}
                   </p>
@@ -536,9 +565,9 @@ function DeveloperHistory({ developer }) {
             <div className="p-4 border-t border-gray-150 flex justify-end bg-gray-50/50">
               <button
                 onClick={() => setViewingHistory(null)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
               >
-                Close Log
+                Close 
               </button>
             </div>
           </div>

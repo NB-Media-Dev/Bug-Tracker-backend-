@@ -47,6 +47,15 @@ function HistoryReport() {
         bugIdMap.set(key, customBugId);
       });
 
+      const projectFirstArrival = {};
+      rawMapped.forEach((bug) => {
+        const p = (bug.module || "General").trim().toUpperCase();
+        const rawNum = typeof bug.rawId === 'number' ? bug.rawId : (parseInt(String(bug.rawId || bug.id).replace(/\D/g, ''), 10) || 999999);
+        if (projectFirstArrival[p] === undefined || rawNum < projectFirstArrival[p]) {
+          projectFirstArrival[p] = rawNum;
+        }
+      });
+
       const mapped = rawMapped
         .map((bug) => {
           const key = bug.rawId || bug.id;
@@ -59,12 +68,17 @@ function HistoryReport() {
           };
         })
         .sort((a, b) => {
-          const numA = typeof a.rawId === 'number' ? a.rawId : (parseInt(String(a.rawId || a.originalBugId).replace(/\D/g, ''), 10) || 0);
-          const numB = typeof b.rawId === 'number' ? b.rawId : (parseInt(String(b.rawId || b.originalBugId).replace(/\D/g, ''), 10) || 0);
-          if (numA !== numB) return numA - numB;
-          const dateA = new Date(a.created_at || a.assignedOn || 0).getTime();
-          const dateB = new Date(b.created_at || b.assignedOn || 0).getTime();
-          return dateA - dateB;
+          const projA = (a.module || "General").trim().toUpperCase();
+          const projB = (b.module || "General").trim().toUpperCase();
+          if (projA !== projB) {
+            const orderA = projectFirstArrival[projA] ?? 999999;
+            const orderB = projectFirstArrival[projB] ?? 999999;
+            if (orderA !== orderB) return orderA - orderB;
+            return projA.localeCompare(projB);
+          }
+          const idA = String(a.bugId || a.id || "");
+          const idB = String(b.bugId || b.id || "");
+          return idA.localeCompare(idB, undefined, { numeric: true });
         });
 
       setHistoryLogs(mapped);
@@ -75,6 +89,14 @@ function HistoryReport() {
 
   useEffect(() => {
     loadHistoryLogs();
+    const interval = setInterval(loadHistoryLogs, 3000);
+    window.addEventListener("notifications_updated", loadHistoryLogs);
+    window.addEventListener("bugs_updated", loadHistoryLogs);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("notifications_updated", loadHistoryLogs);
+      window.removeEventListener("bugs_updated", loadHistoryLogs);
+    };
   }, []);
 
   
@@ -137,7 +159,7 @@ function HistoryReport() {
 
   const bugTitle = viewingHistory? `${viewingHistory.bugId || 'BUG-' + viewingHistory.id} - History Detail`: '';  
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 font-sans text-gray-800 antialiased">
+    <div className="w-full max-w-[1800px] mx-auto space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
 
     
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">

@@ -110,14 +110,12 @@ const mapSubmissionToProject = (sub, allBugs) => {
       "N/A"
     ).toString().toUpperCase(),
 
-    // Tester name
     tester:
       sub.claimed_by ||
       sub.tester_name ||
       sub.testerName ||
       "Not Claimed",
 
-    // Tester ID
     testerId: (
       sub.tester_id ||
       sub.testerId ||
@@ -166,7 +164,7 @@ const mapSubmissionToProject = (sub, allBugs) => {
           }
 
           const seq = uniqueProjectMap[projName];
-          const formattedProjectId = `${devId}-${acronym}-${seq}`;
+          const formattedProjectId = `${acronym}-${seq}`;
           return {
             ...item,
             formattedProjectId,
@@ -279,7 +277,7 @@ URL.revokeObjectURL(url);
           </div>
         </div>
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/3 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search projects by name, developer, tester..."
@@ -373,7 +371,7 @@ URL.revokeObjectURL(url);
       
       {selectedProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-card border border-[var(--color-sidebar-border)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 bg-white dark:bg-slate-900">
+          <div className="bg-card border border-[var(--color-sidebar-border)] rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 bg-white dark:bg-slate-900 custom-scrollbar">
             
      
             <div className="flex items-center justify-between p-4 border-b border-[var(--color-sidebar-border)] bg-[var(--color-muted)]/30">

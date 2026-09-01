@@ -7,7 +7,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import DeveloperReminderModal from "../components/DeveloperReminderModal";
 import { getSavedTheme, applyTheme } from "../lib/theme";
 import { API_BASE, authFetch } from "../lib/api";
-import { formatBugId, formatNotificationMessage, getDeveloperInfo, matchesDeveloper } from "../lib/utils";
+import { formatBugId, formatNotificationMessage, getDeveloperInfo, matchesDeveloper, truncateText } from "../lib/utils";
 
 import {
   UserCheck,
@@ -472,9 +472,12 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   };
 
   const filteredNotifications = notifications.filter(matchesNotifDate);
-  const isNew = (n) => !readNotifIds.includes(n.id);
+  const isNew = (n) => {
+    if (n.read) return false;
+    const idStr = String(n.id);
+    return !readNotifIds.some((id) => String(id) === idStr);
+  };
   const newNotifications = filteredNotifications.filter(isNew);
-  ;
 
 
 
@@ -649,24 +652,31 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                           className="px-2 py-0.5 text-[10px] font-semibold border border-blue-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
                           title="Filter notifications by date"
                         />
-                        {/* <button
+                        <button
                           type="button"
                           onClick={() => {
                             const allIds = filteredNotifications
                               .map((n) => String(n.id))
                               .filter(Boolean);
-                            setReadNotifIds((prev) => Array.from(new Set([...prev, ...allIds])));
+                            setReadNotifIds((prev) => Array.from(new Set([...prev.map(String), ...allIds])));
 
                             const existingPopupDismissed = JSON.parse(localStorage.getItem("developer_dismissed_popups") || "[]");
-                            const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed, ...allIds]));
+                            const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed.map(String), ...allIds]));
                             localStorage.setItem("developer_dismissed_popups", JSON.stringify(updatedPopupDismissed));
 
-                            allIds.forEach((id) => {
-                              authFetch(`${API_BASE}/api/bugs/notifications/${id}/`, {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ is_read: true }),
-                              }).catch(() => {});
+                            setNotifications((prev) =>
+                              prev.map((n) => (allIds.includes(String(n.id)) ? { ...n, read: true } : n))
+                            );
+
+                            filteredNotifications.forEach((n) => {
+                              const numericId = n.numericId || (!isNaN(Number(n.id)) ? Number(n.id) : null);
+                              if (numericId) {
+                                authFetch(`${API_BASE}/api/bugs/notifications/${numericId}/`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ is_read: true }),
+                                }).catch(() => {});
+                              }
                             });
                             window.dispatchEvent(new Event("notifications_updated"));
                           }}
@@ -674,7 +684,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                           title="Mark all as read"
                         >
                           <CheckCheck size={11} /> Read All
-                        </button> */}
+                        </button>
                       </div>
                     </div>
 
@@ -689,7 +699,26 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                             <div
                               key={n.id}
                               onClick={() => {
-                                setReadNotifIds((prev) => Array.from(new Set([...prev, n.id])));
+                                const notifIdStr = String(n.id);
+                                setReadNotifIds((prev) => Array.from(new Set([...prev.map(String), notifIdStr])));
+                                setNotifications((prev) =>
+                                  prev.map((item) => (String(item.id) === notifIdStr ? { ...item, read: true } : item))
+                                );
+
+                                const numericId = n.numericId || (!isNaN(Number(n.id)) ? Number(n.id) : null);
+                                if (numericId) {
+                                  authFetch(`${API_BASE}/api/bugs/notifications/${numericId}/`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ is_read: true }),
+                                  }).catch(() => {});
+                                }
+
+                                const existingPopupDismissed = JSON.parse(localStorage.getItem("developer_dismissed_popups") || "[]");
+                                if (!existingPopupDismissed.map(String).includes(notifIdStr)) {
+                                  localStorage.setItem("developer_dismissed_popups", JSON.stringify([...existingPopupDismissed.map(String), notifIdStr]));
+                                }
+
                                 setShowNotifDropdown(false);
                                 handleNavigate("/developer/myreport");
                               }}
@@ -718,8 +747,8 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                                     {n.timestamp || "Just now"}
                                   </span>
                                 </div>
-                                <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                  {formatNotificationMessage(n.message, n.project_name || n.module || "General")}
+                                <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors break-words overflow-wrap-break-word">
+                                  {truncateText(formatNotificationMessage(n.message, n.project_name || n.module || "General"), 20)}
                                 </p>
                               </div>
                             </div>

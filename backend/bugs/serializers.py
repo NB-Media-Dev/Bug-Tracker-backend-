@@ -182,4 +182,9 @@ class ProjectSubmissionSerializer(serializers.ModelSerializer):
     def get_date(self, obj):
         if not obj.date_submitted:
             return ''
-        return obj.date_submitted.strftime('%d %b %Y, %I:%M %p').lstrip('0')
+        try:
+            from django.utils import timezone
+            local_dt = timezone.localtime(obj.date_submitted)
+            return local_dt.strftime('%d %b %Y, %I:%M %p').lstrip('0')
+        except Exception:
+            return obj.date_submitted.strftime('%d %b %Y, %I:%M %p').lstrip('0')

@@ -75,13 +75,13 @@ function InboxDashboard({ onNavigate }) {
     }
   };
 
-  const handleDeleteMessage = (msgId) => {
-    const updated = messages.filter(m => m.id !== msgId);
-    setMessages(updated);
-    if (activeMessageId === msgId && updated.length > 0) {
-      setActiveMessageId(updated[0].id);
-    }
-  };
+  // const handleDeleteMessage = (msgId) => {
+  //   const updated = messages.filter(m => m.id !== msgId);
+  //   setMessages(updated);
+  //   if (activeMessageId === msgId && updated.length > 0) {
+  //     setActiveMessageId(updated[0].id);
+  //   }
+  // };
 
   const handleStartTesting = async (msg) => {
     try {
@@ -185,7 +185,7 @@ function InboxDashboard({ onNavigate }) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
        
-        <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden flex flex-col h-[600px]">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden flex flex-col h-[400px] lg:h-[600px]">
         
           <div className="p-4 border-b border-gray-150 bg-gray-50/50 space-y-3">
             <div className="relative">
@@ -286,7 +286,7 @@ function InboxDashboard({ onNavigate }) {
         </div>
 
        
-        <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden h-[600px] flex flex-col">
+        <div className="lg:col-span-7 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden min-h-[400px] lg:h-[600px] flex flex-col">
           {activeMessage ? (
             <div className="flex flex-col h-full">
              
@@ -310,7 +310,7 @@ function InboxDashboard({ onNavigate }) {
                   </h2>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                {/* <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleDeleteMessage(activeMessage.id)}
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
@@ -318,7 +318,7 @@ function InboxDashboard({ onNavigate }) {
                   >
                     <Trash2 size={16} />
                   </button>
-                </div>
+                </div> */}
               </div>
 
               

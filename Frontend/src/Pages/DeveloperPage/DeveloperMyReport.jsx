@@ -14,7 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { API_BASE, authFetch } from "../../lib/api";
-import { normalizeBug, formatBugId, getDeveloperInfo, matchesDeveloper } from "../../lib/utils";
+import { normalizeBug, formatBugId, getDeveloperInfo, matchesDeveloper, truncateText } from "../../lib/utils";
 import StatusFilterSelect from "../../components/shared/StatusFilterSelect";
 
 function DeveloperMyReport({ developer }) {
@@ -63,9 +63,13 @@ function DeveloperMyReport({ developer }) {
 
   useEffect(() => {
     loadBugs();
+    const interval = setInterval(loadBugs, 3000);
     window.addEventListener("notifications_updated", loadBugs);
+    window.addEventListener("bugs_updated", loadBugs);
     return () => {
+      clearInterval(interval);
       window.removeEventListener("notifications_updated", loadBugs);
+      window.removeEventListener("bugs_updated", loadBugs);
     };
   }, []);
 
@@ -104,7 +108,7 @@ function DeveloperMyReport({ developer }) {
     setBugs(updatedBugs);
 
     try {
-      const res = await fetch(`${API_BASE}/api/bugs/${rawId}/`, {
+      const res = await authFetch(`/api/bugs/${rawId}/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -193,7 +197,7 @@ function DeveloperMyReport({ developer }) {
     const fullDevName = `${devName} (${devId})`;
 
     try {
-      await fetch(`${API_BASE}/api/bugs/submissions/`, {
+      await authFetch(`/api/bugs/submissions/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -217,7 +221,7 @@ function DeveloperMyReport({ developer }) {
     }
 
     try {
-      await fetch(`${API_BASE}/api/bugs/notifications/`, {
+      await authFetch(`/api/bugs/notifications/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -265,17 +269,22 @@ function DeveloperMyReport({ developer }) {
     return matchesSearch && matchesStatus && isDevMatch && isNotClosed;
   });
 
-  const groupedProjects = filteredBugs.reduce((acc, bug) => {
+    const groupedProjects = filteredBugs.reduce((acc, bug) => {
     const projName = (bug.module || "General").trim().toUpperCase();
     if (!acc[projName]) {
       acc[projName] = [];
     }
     acc[projName].push(bug);
+    // Sort bugs in ascending order (QU1-001, QU1-002, QU1-003)
+    acc[projName].sort((a, b) => {
+      const idA = String(a.bugId || a.id || "");
+      const idB = String(b.bugId || b.id || "");
+      return idA.localeCompare(idB, undefined, { numeric: true });
+    });
     return acc;
   }, {});
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6 font-sans text-gray-800 antialiased">
+    <div className="w-full max-w-[1800px] mx-auto space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -376,7 +385,7 @@ function DeveloperMyReport({ developer }) {
                 </div>
 
                 <div className="flex items-center gap-3 ml-auto md:ml-0 flex-wrap">
-                  <div className="hidden sm:flex items-center gap-2 text-xs">
+                  <div className="flex items-center gap-2 text-xs">
                     {allResolved ? (
                       <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg font-bold border border-emerald-200 flex items-center gap-1">
                         <CheckCircle2 size={13} /> All {activeBugsCount} Bugs
@@ -430,10 +439,9 @@ function DeveloperMyReport({ developer }) {
                     <thead>
                       <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         <th className="p-4 w-24">Bug ID</th>
-                        <th className="p-4 w-60">Description</th>
+                        <th className="p-4 w-60">Title</th>
                         <th className="p-4 w-28 text-center">Severity</th>
                         <th className="p-4 w-32">Bug Type</th>
-
                         <th className="p-4 w-44">Status</th>
                         <th className="p-4 w-32">Due Date</th>
                         <th className="p-4 w-36">Tester By</th>
@@ -466,10 +474,7 @@ function DeveloperMyReport({ developer }) {
                             </td>
                           <td className="p-4 max-w-xs sm:max-w-md whitespace-pre-wrap break-words break-all leading-relaxed text-gray-700">
                             <div className="font-bold text-gray-900 mb-1 break-words break-all leading-snug">
-                              {bug.title}
-                            </div>
-                            <div className="text-xs text-gray-500 leading-normal break-words break-all line-clamp-3">
-                              {bug.description}
+                              {truncateText(bug.title, 20)}
                             </div>
                           </td>                       
                           <td className="p-4 text-center">
@@ -755,7 +760,7 @@ function DeveloperMyReport({ developer }) {
 
       {resolvingProject && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden border border-gray-200 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto overflow-hidden border border-gray-200 animate-fade-in custom-scrollbar">
             <div className="flex items-center justify-between p-4 border-b border-gray-150 bg-emerald-50/60">
               <div className="flex items-center gap-2">
                 <FileArchive className="text-emerald-600 shrink-0" size={20} />

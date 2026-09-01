@@ -235,8 +235,10 @@ function Dasboard({ onNavigate }) {
       };
     });
 
+
+
   return (
-    <div className="space-y-6 font-sans text-gray-800 antialiased w-full max-w-full overflow-x-hidden">
+    <div className="space-y-6 font-sans text-gray-800 antialiased w-full max-w-[1800px] mx-auto px-1 sm:px-3 overflow-x-hidden">
       <div className="relative bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden p-4 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full w-fit">
@@ -280,6 +282,8 @@ function Dasboard({ onNavigate }) {
           </div>
         ))}
       </div>
+
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         <div className="w-full bg-white border border-gray-200 rounded-2xl shadow-2xs p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition-shadow overflow-hidden">

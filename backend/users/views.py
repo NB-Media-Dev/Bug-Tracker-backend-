@@ -1,16 +1,6 @@
-"""
-users/views.py
-
-Employee management API endpoints.
-
-GET   /api/users/            — List all employees (admin only)
-POST  /api/users/invite/     — Add employee + generate credentials + send invite email
-POST  /api/users/login/      — Employee login (sets status=Active & is_online=True)
-POST  /api/users/logout/     — Employee logout (sets is_online=False)
-PATCH /api/users/<pk>/status/ — Toggle employee status (Active ↔ Inactive)
-"""
 
 import secrets
+import logging
 from django.db.models import Q
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
@@ -30,6 +20,9 @@ from .serializers import (
 from .utils import generate_company_email, generate_strong_password
 from .email_service import send_invite_email_async
 
+logger = logging.getLogger(__name__)
+EMPLOYEE_NOT_FOUND_MSG = "Employee not found."
+
 
 class EmployeeListView(APIView):
     """
@@ -41,7 +34,7 @@ class EmployeeListView(APIView):
 
     def get(self, request):
         role = request.query_params.get('role')
-        employees = Employee.objects.all().order_by('-created_at')
+        employees = Employee.objects.filter(is_deleted=False).order_by('-created_at')
         if role:
             employees = employees.filter(role__iexact=role)
         serializer = EmployeeListSerializer(employees, many=True)
@@ -279,9 +272,18 @@ class EmployeeDetailView(APIView):
         try:
             employee = Employee.objects.get(pk=pk)
         except Employee.DoesNotExist:
-            return Response({'detail':EMPLOYEE_NOT_FOUND_MSG}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': EMPLOYEE_NOT_FOUND_MSG}, status=status.HTTP_404_NOT_FOUND)
+        employee.is_deleted = True
+        employee.status = 'Inactive'
+        employee.is_online = False
+        employee.save(update_fields=['is_deleted', 'status', 'is_online'])
+        try:
+            from accounts.models import AdminUser
+            if employee.company_email:
+                AdminUser.objects.filter(email__iexact=employee.company_email).update(is_active=False)
+        except Exception as e:
+            logger.error(f"Error deactivating linked AdminUser: {e}")
 
-        employee.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

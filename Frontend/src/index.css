@@ -276,7 +276,9 @@
     @apply bg-background text-foreground transition-colors duration-300;
     overflow: hidden !important;
     height: 100vh;
+    height: 100dvh;
     max-height: 100vh;
+    max-height: 100dvh;
     width: 100%;
     -webkit-tap-highlight-color: transparent;
   }
@@ -284,12 +286,16 @@
     @apply font-sans;
     overflow: hidden !important;
     height: 100vh;
+    height: 100dvh;
     max-height: 100vh;
+    max-height: 100dvh;
     width: 100%;
   }
   #root {
     height: 100vh;
+    height: 100dvh;
     max-height: 100vh;
+    max-height: 100dvh;
     overflow: hidden !important;
   }
 }
@@ -308,4 +314,11 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.7);
+}
+
+/* Responsive table container helper */
+.responsive-table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
