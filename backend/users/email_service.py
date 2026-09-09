@@ -175,8 +175,6 @@ The BugTracker Admin Team
 
         print("\n" + "=" * 60)
         print("[EMAIL SENT SUCCESSFULLY]")
-        print(f" company email : {company_email} ")
-        print(f" company password : {plain_password}")
         print("=" * 60 + "\n")
 
         if employee_id:
@@ -356,7 +354,6 @@ The BugTracker Admin Team
         msg.send()
         print("\n" + "=" * 60)
         print("[EMAIL SENT SUCCESSFULLY]")
-        print(f"Temporary Password: {temp_password}")
         print("=" * 60 + "\n")
         return True
     except Exception as e:

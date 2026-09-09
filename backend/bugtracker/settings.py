@@ -29,6 +29,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,11 +62,11 @@ WSGI_APPLICATION = 'bugtracker.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME':config('NAME', default=''),
-        'USER':config('USER', default=''),
-        'PASSWORD':config('PASSWORD', default=''),
-        'HOST':'localhost',
-        'PORT':3306,
+        'NAME': config('MYSQLDATABASE', default=config('NAME', default='')),
+        'USER': config('MYSQLUSER', default=config('USER', default='')),
+        'PASSWORD': config('MYSQLPASSWORD', default=config('PASSWORD', default='')),
+        'HOST': config('MYSQLHOST', default=config('HOST', default='localhost')),
+        'PORT': config('MYSQLPORT', default=config('PORT', default=3306, cast=int)),
     }
 }
 
@@ -92,6 +93,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
