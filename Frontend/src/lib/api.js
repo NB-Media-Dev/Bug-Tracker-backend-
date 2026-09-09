@@ -1,20 +1,10 @@
 import { getLocalStorageItem } from "./storage";
 
 export const getDynamicApiBase = () => {
-  if (typeof window !== "undefined" && window.location) {
-    const hostname = window.location.hostname;
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.startsWith("http") && !import.meta.env.VITE_API_BASE_URL.includes("127.0.0.1") && !import.meta.env.VITE_API_BASE_URL.includes("localhost")) {
-        return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "");
-      }
-      return "https://adventurous-tenderness-production-868b.up.railway.app";
-    }
-  }
-
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "");
   }
-  return "http://127.0.0.1:8000";
+  return "";
 };
 
 export const API_BASE = getDynamicApiBase();
