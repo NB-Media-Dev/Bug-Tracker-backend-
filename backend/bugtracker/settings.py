@@ -62,9 +62,9 @@ WSGI_APPLICATION = 'bugtracker.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('MYSQLDATABASE', default=config('NAME', default='')),
+        'NAME': config('MYSQLDATABASE', default=config('MYSQL_DATABASE', default=config('NAME', default=''))),
         'USER': config('MYSQLUSER', default=config('USER', default='')),
-        'PASSWORD': config('MYSQLPASSWORD', default=config('PASSWORD', default='')),
+        'PASSWORD': config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default=''))),
         'HOST': config('MYSQLHOST', default=config('HOST', default='localhost')),
         'PORT': config('MYSQLPORT', default=config('PORT', default=3306, cast=int)),
     }
