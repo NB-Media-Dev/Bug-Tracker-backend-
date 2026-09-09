@@ -74,7 +74,7 @@ class LogoutView(APIView):
     POST /api/auth/logout/
     Blacklists the refresh token (stateless JWT logout).
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         try:
