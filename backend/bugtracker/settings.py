@@ -80,16 +80,19 @@ else:
     db_user = (os.getenv('MYSQLUSER') or os.getenv('MYSQL_USER') or config('MYSQLUSER', default=config('USER', default=''))).strip()
     db_pass = (os.getenv('MYSQLPASSWORD') or os.getenv('MYSQL_PASSWORD') or os.getenv('MYSQL_ROOT_PASSWORD') or config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default='')))).strip()
     db_host = (os.getenv('MYSQLHOST') or os.getenv('MYSQL_HOST') or config('MYSQLHOST', default=config('MYSQL_HOST', default=config('HOST', default='localhost')))).strip()
-    db_port = str(os.getenv('MYSQLPORT') or os.getenv('MYSQL_PORT') or config('MYSQLPORT', default=config('PORT', default='3306'))).strip()
+    db_port = str(os.getenv('MYSQLPORT') or os.getenv('MYSQL_PORT') or config('MYSQLPORT', default='3306')).strip()
 
-    # If running in Railway environment and host is localhost/empty, auto-route to Railway private MySQL network
+    # If running in Railway environment:
     is_railway = bool(os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('RAILWAY_SERVICE_ID'))
-    if is_railway and (not db_host or db_host in ('localhost', '127.0.0.1')):
-        db_host = 'mysql.railway.internal'
-    if is_railway and not db_name:
-        db_name = 'railway'
-    if is_railway and not db_user:
-        db_user = 'root'
+    if is_railway:
+        if not db_host or db_host in ('localhost', '127.0.0.1'):
+            db_host = 'mysql.railway.internal'
+        if not db_name:
+            db_name = 'railway'
+        if not db_user:
+            db_user = 'root'
+        # MySQL private service is always on port 3306
+        db_port = '3306'
 
     DATABASES = {
         'default': {
