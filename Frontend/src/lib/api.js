@@ -20,16 +20,12 @@ export const getAuthToken = () => {
 export const resolveApiUrl = (url) => {
   if (!url) return "/api";
   if (url.startsWith("http://") || url.startsWith("https://")) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith("/api")) {
-        return parsed.pathname + parsed.search;
-      }
-    } catch {
-    }
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
+  if (API_BASE) {
+    return `${API_BASE.replace(/\/+$/, "")}${cleanPath}`;
+  }
   return cleanPath;
 };
 
@@ -49,7 +45,13 @@ export const authFetch = async (url, options = {}) => {
       return [path];
     }
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const candidates = [cleanPath];
+    const candidates = [];
+
+    if (API_BASE) {
+      candidates.push(`${API_BASE.replace(/\/+$/, "")}${cleanPath}`);
+    }
+
+    candidates.push(cleanPath);
 
     if (typeof window !== "undefined" && window.location && window.location.hostname) {
       const hostname = window.location.hostname;
