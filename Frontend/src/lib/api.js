@@ -1,16 +1,10 @@
 import { getLocalStorageItem } from "./storage";
 
 export const getDynamicApiBase = () => {
-  if (typeof window !== "undefined" && window.location && window.location.hostname) {
-    const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      return "https://adventurous-tenderness-production-868b.up.railway.app";
-    }
-  }
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  return "http://127.0.0.1:8000";
+  return "";
 };
 
 export const API_BASE = getDynamicApiBase();
@@ -26,14 +20,16 @@ export const getAuthToken = () => {
 export const resolveApiUrl = (url) => {
   if (!url) return "/api";
   if (url.startsWith("http://") || url.startsWith("https://")) {
+    try {
+      const parsed = new URL(url);
+      if (parsed.pathname.startsWith("/api")) {
+        return parsed.pathname + parsed.search;
+      }
+    } catch {
+    }
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
-  const base = getDynamicApiBase();
-  if (base) {
-    const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
-    return `${cleanBase}${cleanPath}`;
-  }
   return cleanPath;
 };
 
@@ -48,28 +44,20 @@ export const authFetch = async (url, options = {}) => {
     ...options.headers,
   });
 
-  const getCandidateUrls = (target) => {
-    if (target.startsWith("http://") || target.startsWith("https://")) {
-      return [target];
+  const getCandidateUrls = (path) => {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return [path];
     }
-    const cleanPath = target.startsWith("/") ? target : `/${target}`;
-    const base = getDynamicApiBase();
-    const isLocal = typeof window !== "undefined" && window.location && 
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const candidates = [cleanPath];
 
-    if (!isLocal) {
-      const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
-      return [`${cleanBase}${cleanPath}`];
+    if (typeof window !== "undefined" && window.location && window.location.hostname) {
+      const hostname = window.location.hostname;
+      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+        candidates.push(`http://${hostname}:8000${cleanPath}`);
+      }
     }
-
-    const candidates = [];
-    if (base) {
-      const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
-      candidates.push(`${cleanBase}${cleanPath}`);
-    }
-    candidates.push(cleanPath);
     candidates.push(`http://127.0.0.1:8000${cleanPath}`);
-    candidates.push(`http://127.0.0.1:8001${cleanPath}`);
     return Array.from(new Set(candidates));
   };
 
