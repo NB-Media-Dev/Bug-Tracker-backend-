@@ -51,15 +51,14 @@ export const authFetch = async (url, options = {}) => {
       candidates.push(`${API_BASE.replace(/\/+$/, "")}${cleanPath}`);
     }
 
-    candidates.push(cleanPath);
-
     if (typeof window !== "undefined" && window.location && window.location.hostname) {
       const hostname = window.location.hostname;
-      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
         candidates.push(`http://${hostname}:8000${cleanPath}`);
+        candidates.push(`http://127.0.0.1:8000${cleanPath}`);
       }
     }
-    candidates.push(`http://127.0.0.1:8000${cleanPath}`);
+    candidates.push(cleanPath);
     return Array.from(new Set(candidates));
   };
 
