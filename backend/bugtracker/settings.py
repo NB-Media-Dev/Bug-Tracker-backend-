@@ -59,9 +59,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bugtracker.wsgi.application'
 
+import os
 from urllib.parse import urlparse
 
-database_url = config('MYSQL_URL', default=config('DATABASE_URL', default=''))
+database_url = os.getenv('MYSQL_URL') or os.getenv('DATABASE_URL') or config('MYSQL_URL', default=config('DATABASE_URL', default=''))
 if database_url:
     _db_url = urlparse(database_url)
     DATABASES = {
@@ -75,14 +76,29 @@ if database_url:
         }
     }
 else:
+    db_name = (os.getenv('MYSQLDATABASE') or os.getenv('MYSQL_DATABASE') or config('MYSQLDATABASE', default=config('MYSQL_DATABASE', default=config('NAME', default='')))).strip()
+    db_user = (os.getenv('MYSQLUSER') or os.getenv('MYSQL_USER') or config('MYSQLUSER', default=config('USER', default=''))).strip()
+    db_pass = (os.getenv('MYSQLPASSWORD') or os.getenv('MYSQL_PASSWORD') or os.getenv('MYSQL_ROOT_PASSWORD') or config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default='')))).strip()
+    db_host = (os.getenv('MYSQLHOST') or os.getenv('MYSQL_HOST') or config('MYSQLHOST', default=config('MYSQL_HOST', default=config('HOST', default='localhost')))).strip()
+    db_port = str(os.getenv('MYSQLPORT') or os.getenv('MYSQL_PORT') or config('MYSQLPORT', default=config('PORT', default='3306'))).strip()
+
+    # If running in Railway environment and host is localhost/empty, auto-route to Railway private MySQL network
+    is_railway = bool(os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('RAILWAY_SERVICE_ID'))
+    if is_railway and (not db_host or db_host in ('localhost', '127.0.0.1')):
+        db_host = 'mysql.railway.internal'
+    if is_railway and not db_name:
+        db_name = 'railway'
+    if is_railway and not db_user:
+        db_user = 'root'
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('MYSQLDATABASE', default=config('MYSQL_DATABASE', default=config('NAME', default=''))),
-            'USER': config('MYSQLUSER', default=config('USER', default='')),
-            'PASSWORD': config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default=''))),
-            'HOST': config('MYSQLHOST', default=config('HOST', default='localhost')),
-            'PORT': config('MYSQLPORT', default=config('PORT', default=3306, cast=int)),
+            'NAME': db_name,
+            'USER': db_user,
+            'PASSWORD': db_pass,
+            'HOST': db_host,
+            'PORT': int(db_port) if db_port.isdigit() else 3306,
         }
     }
 
