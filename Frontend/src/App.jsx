@@ -6,7 +6,7 @@ import Monitor from "./Pages/Monitor";
 import UserMangerment from "./Pages/UserMangerment";
 import Login from "./Pages/Login";
 import DeveloperDashboard from "./Pages/DeveloperDashboard";
-import TesterDashboard from "./Pages/TesterDashboard";
+import TesterDashboard from "./Pages/Testerdashboard";
 import ThemeSelector from "./components/ThemeSelector";
 import UserHeaderPanel from "./components/UserHeaderPanel";
 import ProfileModal from "./components/ProfileModal";
