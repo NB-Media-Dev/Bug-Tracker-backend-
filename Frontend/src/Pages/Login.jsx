@@ -252,17 +252,37 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      if (await tryAdminLogin(cleanEmail)) {
-        setIsLoading(false);
-        return;
-      }
+      const isAdminLikely = cleanEmail.startsWith("admin") || cleanEmail.includes("admin@");
 
-      const errMsg = await tryEmployeeLogin(cleanEmail);
-      if (errMsg === "require_password_change") {
-        setIsLoading(false);
-        return;
-      }
-      if (errMsg) {
+      if (isAdminLikely) {
+        if (await tryAdminLogin(cleanEmail)) {
+          setIsLoading(false);
+          return;
+        }
+        const errMsg = await tryEmployeeLogin(cleanEmail);
+        if (errMsg === "require_password_change") {
+          setIsLoading(false);
+          return;
+        }
+        if (errMsg) {
+          setError(errMsg);
+          triggerShake();
+        }
+      } else {
+        const errMsg = await tryEmployeeLogin(cleanEmail);
+        if (errMsg === "require_password_change") {
+          setIsLoading(false);
+          return;
+        }
+        if (!errMsg) {
+          setIsLoading(false);
+          return;
+        }
+        // Fallback to admin login if employee auth failed
+        if (await tryAdminLogin(cleanEmail)) {
+          setIsLoading(false);
+          return;
+        }
         setError(errMsg);
         triggerShake();
       }
