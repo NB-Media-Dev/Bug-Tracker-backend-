@@ -186,13 +186,18 @@ export const formatDateStandard = (dateVal) => {
   if (!dateVal || dateVal === "N/A" || dateVal === "null" || dateVal === "undefined") return "N/A";
   
   const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return String(dateVal);
+  if (isNaN(d.getTime())) {
+    const parts = String(dateVal).split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return String(dateVal);
+  }
 
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
 };
 
 export const normalizeBug = (b, fallbacks = {}) => {

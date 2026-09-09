@@ -56,11 +56,10 @@ function DeveloperMyReport({ developer }) {
         allTasks.push(...mapped);
       }
       setBugs(allTasks);
-    } catch (e) {
+    } catch(e) {
       console.error("Error loading tasks from API", e);
     }
   };
-
   useEffect(() => {
     loadBugs();
     const interval = setInterval(loadBugs, 3000);
@@ -72,7 +71,6 @@ function DeveloperMyReport({ developer }) {
       window.removeEventListener("bugs_updated", loadBugs);
     };
   }, []);
-
   const handleOpenDetails = async (bug) => {
     setViewingBug(bug);
     if (bug.testerEdited) {
