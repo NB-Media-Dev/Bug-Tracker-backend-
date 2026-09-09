@@ -54,7 +54,6 @@ export const authFetch = async (url, options = {}) => {
       const hostname = window.location.hostname;
       if (hostname === "localhost" || hostname === "127.0.0.1") {
         candidates.push(`http://127.0.0.1:8000${cleanPath}`);
-        candidates.push(`http://127.0.0.1:8001${cleanPath}`);
       }
     }
 
