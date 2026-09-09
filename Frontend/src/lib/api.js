@@ -1,10 +1,16 @@
 import { getLocalStorageItem } from "./storage";
 
 export const getDynamicApiBase = () => {
+  if (typeof window !== "undefined" && window.location && window.location.hostname) {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return "https://adventurous-tenderness-production-868b.up.railway.app";
+    }
+  }
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  return "";
+  return "http://127.0.0.1:8000";
 };
 
 export const API_BASE = getDynamicApiBase();
@@ -23,9 +29,10 @@ export const resolveApiUrl = (url) => {
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
-  if (API_BASE) {
-    const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-    return `${base}${cleanPath}`;
+  const base = getDynamicApiBase();
+  if (base) {
+    const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
+    return `${cleanBase}${cleanPath}`;
   }
   return cleanPath;
 };
@@ -46,10 +53,19 @@ export const authFetch = async (url, options = {}) => {
       return [target];
     }
     const cleanPath = target.startsWith("/") ? target : `/${target}`;
+    const base = getDynamicApiBase();
+    const isLocal = typeof window !== "undefined" && window.location && 
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+    if (!isLocal) {
+      const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
+      return [`${cleanBase}${cleanPath}`];
+    }
+
     const candidates = [];
-    if (API_BASE) {
-      const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
-      candidates.push(`${base}${cleanPath}`);
+    if (base) {
+      const cleanBase = base.endsWith("/") ? base.slice(0, -1) : base;
+      candidates.push(`${cleanBase}${cleanPath}`);
     }
     candidates.push(cleanPath);
     candidates.push(`http://127.0.0.1:8000${cleanPath}`);
