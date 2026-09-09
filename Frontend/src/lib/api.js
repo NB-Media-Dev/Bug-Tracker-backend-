@@ -2,7 +2,7 @@ import { getLocalStorageItem } from "./storage";
 
 export const getDynamicApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "");
   }
   return "";
 };
@@ -20,13 +20,6 @@ export const getAuthToken = () => {
 export const resolveApiUrl = (url) => {
   if (!url) return "/api";
   if (url.startsWith("http://") || url.startsWith("https://")) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith("/api")) {
-        return parsed.pathname + parsed.search;
-      }
-    } catch {
-    }
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
@@ -49,15 +42,22 @@ export const authFetch = async (url, options = {}) => {
       return [path];
     }
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const candidates = [cleanPath];
+    const candidates = [];
 
-    if (typeof window !== "undefined" && window.location && window.location.hostname) {
+    if (API_BASE) {
+      candidates.push(`${API_BASE}${cleanPath}`);
+    }
+
+    candidates.push(cleanPath);
+
+    if (typeof window !== "undefined" && window.location) {
       const hostname = window.location.hostname;
-      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-        candidates.push(`http://${hostname}:8001${cleanPath}`);
+      if (hostname === "localhost" || hostname === "127.0.0.1") {
+        candidates.push(`http://127.0.0.1:8000${cleanPath}`);
+        candidates.push(`http://127.0.0.1:8001${cleanPath}`);
       }
     }
-    candidates.push(`http://127.0.0.1:8001${cleanPath}`);
+
     return Array.from(new Set(candidates));
   };
 
