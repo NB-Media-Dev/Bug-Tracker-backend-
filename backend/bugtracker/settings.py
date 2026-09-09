@@ -59,16 +59,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bugtracker.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('MYSQLDATABASE', default=config('MYSQL_DATABASE', default=config('NAME', default=''))),
-        'USER': config('MYSQLUSER', default=config('USER', default='')),
-        'PASSWORD': config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default=''))),
-        'HOST': config('MYSQLHOST', default=config('HOST', default='localhost')),
-        'PORT': config('MYSQLPORT', default=config('PORT', default=3306, cast=int)),
+from urllib.parse import urlparse
+
+database_url = config('MYSQL_URL', default=config('DATABASE_URL', default=''))
+if database_url:
+    _db_url = urlparse(database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': _db_url.path.lstrip('/'),
+            'USER': _db_url.username or '',
+            'PASSWORD': _db_url.password or '',
+            'HOST': _db_url.hostname or '127.0.0.1',
+            'PORT': _db_url.port or 3306,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('MYSQLDATABASE', default=config('MYSQL_DATABASE', default=config('NAME', default=''))),
+            'USER': config('MYSQLUSER', default=config('USER', default='')),
+            'PASSWORD': config('MYSQLPASSWORD', default=config('MYSQL_ROOT_PASSWORD', default=config('PASSWORD', default=''))),
+            'HOST': config('MYSQLHOST', default=config('HOST', default='localhost')),
+            'PORT': config('MYSQLPORT', default=config('PORT', default=3306, cast=int)),
+        }
+    }
 
 
 AUTH_USER_MODEL = 'accounts.AdminUser'
