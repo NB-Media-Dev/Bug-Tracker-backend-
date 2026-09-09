@@ -20,16 +20,13 @@ export const getAuthToken = () => {
 export const resolveApiUrl = (url) => {
   if (!url) return "/api";
   if (url.startsWith("http://") || url.startsWith("https://")) {
-    try {
-      const parsed = new URL(url);
-      if (parsed.pathname.startsWith("/api")) {
-        return parsed.pathname + parsed.search;
-      }
-    } catch {
-    }
     return url;
   }
   const cleanPath = url.startsWith("/") ? url : `/${url}`;
+  if (API_BASE) {
+    const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+    return `${base}${cleanPath}`;
+  }
   return cleanPath;
 };
 
@@ -44,19 +41,18 @@ export const authFetch = async (url, options = {}) => {
     ...options.headers,
   });
 
-  const getCandidateUrls = (path) => {
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return [path];
+  const getCandidateUrls = (target) => {
+    if (target.startsWith("http://") || target.startsWith("https://")) {
+      return [target];
     }
-    const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    const candidates = [cleanPath];
-
-    if (typeof window !== "undefined" && window.location && window.location.hostname) {
-      const hostname = window.location.hostname;
-      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-        candidates.push(`http://${hostname}:8001${cleanPath}`);
-      }
+    const cleanPath = target.startsWith("/") ? target : `/${target}`;
+    const candidates = [];
+    if (API_BASE) {
+      const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+      candidates.push(`${base}${cleanPath}`);
     }
+    candidates.push(cleanPath);
+    candidates.push(`http://127.0.0.1:8000${cleanPath}`);
     candidates.push(`http://127.0.0.1:8001${cleanPath}`);
     return Array.from(new Set(candidates));
   };
