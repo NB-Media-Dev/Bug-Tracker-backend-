@@ -51,7 +51,7 @@ const renderCtoBadgeIcon = (message = "", type = "") => {
   }
   if (m.includes("submitted") || type === "project_submitted") {
     return {
-      badge: "PROJECT BUILD",
+      badge: "project send",
       icon: <FileArchive size={14} className="text-indigo-600 shrink-0" />,
       bg: "bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-700",
       dot: "bg-indigo-500",
