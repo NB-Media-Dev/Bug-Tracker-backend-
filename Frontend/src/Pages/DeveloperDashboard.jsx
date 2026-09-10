@@ -23,6 +23,7 @@ import {
   Inbox,
   Sparkles,
   ArrowRight,
+  Shield,
 } from "lucide-react";
 import UserHeaderPanel from "../components/UserHeaderPanel";
 import NotificationPopupAlerts from "../components/NotificationPopupAlerts";
@@ -33,6 +34,13 @@ const renderNotifBadgeIcon = (badge, message) => {
   const b = (badge || "").toLowerCase();
   const m = (message || "").toLowerCase();
 
+  if (b.includes("admin") || b.includes("account") || m.includes("account update") || m.includes("by admin")) {
+    return {
+      icon: <Shield className="w-4 h-4 text-purple-600 shrink-0" />,
+      bg: "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700",
+      dot: "bg-purple-500",
+    };
+  }
   if (b.includes("accepted") || m.includes("accepted")) {
     return {
       icon: <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />,
@@ -210,6 +218,13 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   };
 
   const getBadgeType = (type, message = "") => {
+    if (
+      type === "account_updated" ||
+      (message || "").toLowerCase().includes("account update") ||
+      (message || "").toLowerCase().includes("by admin")
+    ) {
+      return "Admin Update";
+    }
     if (type === "build_accepted") return "Build Accepted";
     if (type === "bug_updated") {
       const m = (message || "").toLowerCase();
@@ -364,6 +379,14 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
       apiNotifs,
     );
     setNotifications(unique);
+
+    const serverReadIds = apiNotifs.filter((n) => n.read).map((n) => String(n.id));
+    if (serverReadIds.length > 0) {
+      setReadNotifIds((prev) => {
+        const next = Array.from(new Set([...prev.map(String), ...serverReadIds]));
+        return next.length !== prev.length ? next : prev;
+      });
+    }
   };
 
   useEffect(() => {

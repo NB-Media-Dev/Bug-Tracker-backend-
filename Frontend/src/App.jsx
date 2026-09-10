@@ -19,6 +19,7 @@ import { getSavedTheme, applyTheme } from "./lib/theme";
 import { API_BASE, authFetch } from "./lib/api";
 import { formatNotificationMessage, truncateText } from "./lib/utils";
 import { getStoredAuth, clearAuthStorage, getRequirePasswordChange } from "./lib/auth";
+import { saveStoredAvatar, getStoredAvatar } from "./lib/avatar";
 import { Calendar, ShieldCheck, CheckCheck, Activity, Building2, AlertTriangle, Clock, Inbox, FileArchive, CheckCircle2, Bell, ArrowRight } from "lucide-react";
 
 const renderCtoBadgeIcon = (message = "", type = "") => {
@@ -536,8 +537,11 @@ function App() {
                 role="admin"
                 onClose={() => setShowProfileModal(false)}
                 onUpdateUser={(updated) => {
-                  setAuthUser((prev) => ({ ...prev, ...updated }));
-                  localStorage.setItem("admin_user", JSON.stringify({ ...authUser, ...updated }));
+                  const updatedUser = { ...authUser, ...updated };
+                  setAuthUser(updatedUser);
+                  localStorage.setItem("admin_user", JSON.stringify(updatedUser));
+                  saveStoredAvatar(updatedUser, updated.avatarUrl !== undefined ? updated.avatarUrl : getStoredAvatar(updatedUser));
+                  window.dispatchEvent(new Event("user_profile_updated"));
                 }}
               />
             )}
