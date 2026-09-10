@@ -67,7 +67,7 @@ const renderCtoBadgeIcon = (message = "", type = "") => {
   }
   if (m.includes("resolved") || type === "bug_resolved_alert") {
     return {
-      badge: "BUG RESOLVED",
+      badge: "developer complete",
       icon: <CheckCircle2 size={14} className="text-blue-600 shrink-0" />,
       bg: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-700",
       dot: "bg-blue-500",

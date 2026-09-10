@@ -105,7 +105,7 @@ const getBadgeType = (type, message = "") => {
   if (type === "bug_updated") {
     const m = (message || "").toLowerCase();
     if (m.includes("not fixed")) return "Not Fixed Alert";
-    if (m.includes("closed") || m.includes("resolved")) return "Bug Resolved";
+    if (m.includes("closed") || m.includes("resolved")) return "developer complete";
     if (m.includes("pending")) return "Bug Pending";
     if (m.includes("in progress")) return "In Progress";
     return "Bug Updated";
