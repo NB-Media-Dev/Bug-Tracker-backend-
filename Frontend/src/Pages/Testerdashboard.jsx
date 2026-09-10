@@ -100,7 +100,7 @@ const getBadgeType = (type, message = "") => {
     return "Admin Update";
   }
   if (type === "build_submission" || type === "project_submitted" || (message || "").toLowerCase().includes("submitted project build")) {
-    return "Build Submitted";
+    return "developer Submitted";
   }
   if (type === "bug_updated") {
     const m = (message || "").toLowerCase();
@@ -333,7 +333,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
         rawTimestamp: s.date_submitted || s.created_at || new Date().toISOString(),
         timestamp: formatTimestamp(s.date_submitted || s.created_at),
         type: "build_submission",
-        badge: "Build Submitted",
+        badge: "developer Submitted",
         message: `${devLabel} submitted project build: "${s.projectName || s.project_name}"`,
       };
     });
