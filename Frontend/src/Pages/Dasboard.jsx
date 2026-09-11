@@ -248,8 +248,6 @@ function Dasboard({ onNavigate }) {
             Welcome back, {admin?.username || "CTO"} !
           </h1>
           <p className="text-xs text-gray-500 max-w-2xl">
-            Monitor system health, analyze logged bugs, and coordinate
-            tester/developer workspace operations.
           </p>
         </div>
       </div>

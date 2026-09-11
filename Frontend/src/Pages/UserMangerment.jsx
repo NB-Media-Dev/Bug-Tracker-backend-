@@ -712,7 +712,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
                   <Edit3 className="h-4 w-4" />
                 </button>
 
-                <button
+                {/* <button
                   type="button"
                   onClick={() =>
                     setDeleteTarget(emp)
@@ -721,7 +721,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
                   title="Delete employee"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </button> */}
               </div>
             </td>
           )}
