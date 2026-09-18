@@ -9,10 +9,13 @@ function DeveloperHistory({ developer }) {
   const [projectFilter, setProjectFilter] = useState("All");
   const [viewingHistory, setViewingHistory] = useState(null);
 
-  const devName = developer?.name || "Vasanthan";
+  const devRole = (developer?.role || "Developer").toLowerCase();
+  const isDesigner = devRole === "designer";
+  const devName = developer?.name || (isDesigner ? "Designer" : "Vasanthan");
+  const fallbackPrefix = isDesigner ? "DES" : "DEV";
   const devId =
     developer?.employee_id ||
-    (developer?.id ? `DEV${String(developer.id).padStart(3, "0")}` : "DEV001");
+    (developer?.id ? `${fallbackPrefix}${String(developer.id).padStart(3, "0")}` : `${fallbackPrefix}001`);
   const formattedDevId = devId.toLowerCase();
 
   const loadHistory = async () => {

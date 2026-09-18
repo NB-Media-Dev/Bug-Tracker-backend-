@@ -308,19 +308,22 @@ export const getDeveloperInfo = (propDeveloper = null) => {
     const dUser = JSON.parse(localStorage.getItem("developer_user") || "{}");
     const name = propDeveloper?.name || dUser?.name || localStorage.getItem("developer_name") || "";
     const email = propDeveloper?.email || dUser?.company_email || dUser?.email || "";
+    const role = (propDeveloper?.role || dUser?.role || "").toLowerCase();
+    const fallbackPrefix = role === "designer" ? "DES" : "DEV";
     const id =
       propDeveloper?.employee_id ||
       propDeveloper?.id ||
       dUser?.employee_id ||
       localStorage.getItem("developer_id") ||
       localStorage.getItem("developer_employee_id") ||
-      (dUser?.id ? `DEV${String(dUser.id).padStart(3, "0")}` : "");
-    return { name, email, id };
+      (dUser?.id ? `${fallbackPrefix}${String(dUser.id).padStart(3, "0")}` : "");
+    return { name, email, id, role: propDeveloper?.role || dUser?.role || "Developer" };
   } catch {
     return {
       name: propDeveloper?.name || "",
       email: propDeveloper?.email || "",
       id: propDeveloper?.employee_id || propDeveloper?.id || "",
+      role: propDeveloper?.role || "Developer",
     };
   }
 };

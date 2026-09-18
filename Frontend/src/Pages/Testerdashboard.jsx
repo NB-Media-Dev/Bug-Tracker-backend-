@@ -321,6 +321,9 @@ function Testerdashboard({ tester: propTester, onLogout }) {
       const devLabel = rawDev ? `${rawDev} (${devId})` : devId;
       const isAccepted = s.status === "Accepted" || s.status === "Testing" || Boolean(s.claimed_by || s.claimedBy);
 
+      const isDes = (s.developer_id || s.developerId || "").toUpperCase().startsWith("DES") || (s.developerName || "").toLowerCase().includes("designer");
+      const badgeText = isDes ? "Designer Submitted" : "Developer Submitted";
+
       return {
         id: `SUB-${s.id}`,
         rawSubmissionId: s.id,
@@ -333,7 +336,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
         rawTimestamp: s.date_submitted || s.created_at || new Date().toISOString(),
         timestamp: formatTimestamp(s.date_submitted || s.created_at),
         type: "build_submission",
-        badge: "developer Submitted",
+        badge: badgeText,
         message: `${devLabel} submitted project build: "${s.projectName || s.project_name}"`,
       };
     });

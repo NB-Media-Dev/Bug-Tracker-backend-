@@ -5,8 +5,12 @@ import { getProjectPrefix } from "../../lib/theme";
 import { API_BASE, authFetch } from '../../lib/api';
 
 function DeveloperSendProject({ developer }) {
-  const devName = developer?.name || 'Vasanthan';
-  const devId = developer?.employee_id || (developer?.id ? `DEV${String(developer.id).padStart(3, '0')}` : 'DEV001');
+  const devRole = (developer?.role || 'Developer').toLowerCase();
+  const isDesigner = devRole === 'designer';
+  const roleLabel = isDesigner ? 'Designer' : 'Developer';
+  const devName = developer?.name || (isDesigner ? 'Designer' : 'Vasanthan');
+  const fallbackPrefix = isDesigner ? 'DES' : 'DEV';
+  const devId = developer?.employee_id || (developer?.id ? `${fallbackPrefix}${String(developer.id).padStart(3, '0')}` : `${fallbackPrefix}001`);
   const fullDevName = `${devName}`;
 
 
@@ -171,7 +175,7 @@ function DeveloperSendProject({ developer }) {
       });
       if (res.ok) {
         loadSubmissions();
-        sendAdminNotification(`Developer ${fullDevName} submitted a project build for "${projectName.trim()}" (${version || 'v0.1'}).`);
+        sendAdminNotification(`${roleLabel} ${fullDevName} submitted a project build for "${projectName.trim()}" (${version || 'v0.1'}).`);
         setSuccessMessage(`Build logged successfully!`);
         resetSubmissionForm();
         setTimeout(() => setSuccessMessage(''), 4000);

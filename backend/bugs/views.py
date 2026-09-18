@@ -852,17 +852,18 @@ class ProjectSubmissionDetailView(APIView):
         claimed_by_id = updated_sub.claimed_by_id or 'TS001'
         
         dev_name_clean = updated_sub.developer_name.split('(')[0].strip()
-        dev_id_match = re.search(r'\((DEV\d+|EMP\d+)\)', updated_sub.developer_name, re.IGNORECASE)
-        dev_id = updated_sub.developer_id or (dev_id_match.group(1).upper() if dev_id_match else 'DEV001')
+        dev_id_match = re.search(r'\(([A-Za-z]+\d+|EMP\d+)\)', updated_sub.developer_name, re.IGNORECASE)
+        dev_id = updated_sub.developer_id or (dev_id_match.group(1) if dev_id_match else 'DEV001')
         
-        emp = Employee.objects.filter(Q(employee_id__iexact=dev_id) | Q(name__icontains=dev_name_clean), role='Developer').first()
+        emp = Employee.objects.filter(Q(employee_id__iexact=dev_id) | Q(name__icontains=dev_name_clean), role__in=['Developer', 'Designer']).first()
         dev_email = emp.company_email if emp else f"{dev_name_clean.lower().replace(' ', '')}@bugtracker.com"
         dev_name = emp.name if emp else dev_name_clean
+        recip_role = emp.role if emp else 'Developer'
         
         Notification.objects.create(
             recipient_email=dev_email,
             recipient_name=dev_name,
-            recipient_role='Developer',
+            recipient_role=recip_role,
             recipient_id=dev_id,
             notification_type='build_accepted',
             message=f'Your project build "{updated_sub.project_name}" has been accepted and is being tested by {claimed_by} ({claimed_by_id})',

@@ -121,6 +121,11 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   const devName = devInfo.name;
   const devId = devInfo.id;
   const devEmail = devInfo.email;
+  const userRole = (developer?.role || devInfo.role || "Developer").toLowerCase();
+  const isDesigner = userRole === "designer";
+  const portalTitle = isDesigner ? "Designer Portal" : "Developer Portal";
+  const dashboardTitle = isDesigner ? "Designer Dashboard" : "Developer Dashboard";
+  const supportTitle = isDesigner ? "Designer Support & Documentation" : "Developer Support & Documentation";
 
   const getDueBugsForDeveloper = (allBugs) => {
     const today = new Date();
@@ -587,7 +592,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   return (
     <div className="flex h-screen w-screen bg-gray-50 text-gray-800 font-sans antialiased overflow-hidden">
       <NotificationPopupAlerts
-        role="developer"
+        role={isDesigner ? "designer" : "developer"}
         user={developer}
         onNotificationClick={() => setCurrentPath("/developer/myreport")}
       />
@@ -616,13 +621,13 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                 </svg>
               </button>
               <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                Developer Portal
+                {portalTitle}
               </span>
             </div>
 
             {/* Right: theme + date + user */}
             <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-              <ThemeSelector currentRole="developer" user={developer} />
+              <ThemeSelector currentRole={isDesigner ? "designer" : "developer"} user={developer} />
               {/* Date pill — hidden on mobile */}
               <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-slate-100 border border-slate-200 px-3 py-1.5 text-sm text-slate-700">
                 <Calendar size={14} className="text-slate-500 flex-shrink-0" />
@@ -834,11 +839,11 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                 <div className="flex items-center gap-2">
                   <HelpCircle className="text-blue-600" size={24} />
                   <h2 className="text-xl font-bold text-gray-900">
-                    Developer Support & Documentation
+                    {supportTitle}
                   </h2>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Welcome to the BugTracker Developer Portal. Use the sidebar menu
+                  Welcome to the BugTracker {portalTitle}. Use the sidebar menu
                   to navigate between your Overview Dashboard, My Report task
                   list, and Resolved History.
                 </p>
@@ -891,7 +896,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                         </span>
                       </div>
                       <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 mt-2">
-                        Developer Dashboard
+                        {dashboardTitle}
                       </h1>
                       <p className="text-sm text-gray-500 mt-1">
                         Welcome back, {devName}. Track your active issues, status

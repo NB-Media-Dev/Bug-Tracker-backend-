@@ -29,15 +29,17 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
   const empId =
     user?.employee_id ||
     (user?.id
-      ? `${roleLower === "developer" ? "DEV" : roleLower === "cto" ? "CTO" : "TS"}${String(user.id).padStart(
+      ? `${roleLower === "developer" ? "DEV" : roleLower === "designer" ? "DES" : roleLower === "cto" ? "CTO" : "TS"}${String(user.id).padStart(
         3,
         "0"
       )}`
       : roleLower === "developer"
         ? "DEV001"
-        : roleLower === "cto"
-          ? "Cto001"
-          : "TS001");
+        : roleLower === "designer"
+          ? "DES001"
+          : roleLower === "cto"
+            ? "Cto001"
+            : "TS001");
   const empEmail = user?.company_email || user?.personal_email || user?.email || "";
 
   const fetchNotifications = async () => {
@@ -253,7 +255,7 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
     if (type === "project_submitted" || type === "build_submitted" || msg.includes("submitted project build") || msg.includes("submitted successfully")) {
       return {
         title: "Project Build Alert",
-        badgeText: "Developer Submitted",
+        badgeText: msg.includes("designer") ? "Designer Submitted" : "Developer Submitted",
         accentBar: "bg-indigo-600",
         badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
         iconContainer: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",

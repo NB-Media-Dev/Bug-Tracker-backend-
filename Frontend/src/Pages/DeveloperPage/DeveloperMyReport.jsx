@@ -219,6 +219,8 @@ function DeveloperMyReport({ developer }) {
     }
 
     try {
+      const devRole = (developer?.role || devInfo.role || "Developer").toLowerCase();
+      const roleLabel = devRole === "designer" ? "Designer" : "Developer";
       await authFetch(`/api/bugs/notifications/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -228,7 +230,7 @@ function DeveloperMyReport({ developer }) {
           recipient_role: "Tester",
           recipient_id: resolvingProject.testerId || "TST001",
           notification_type: "build_submitted",
-          message: `Developer ${fullDevName} resolved ALL ${resolvingProject.bugsCount} bugs for project "${resolvingProject.name}" and shared project link: ${resolveProjectLink.trim()}`,
+          message: `${roleLabel} ${fullDevName} resolved ALL ${resolvingProject.bugsCount} bugs for project "${resolvingProject.name}" and shared project link: ${resolveProjectLink.trim()}`,
         }),
       });
     } catch (err) {
