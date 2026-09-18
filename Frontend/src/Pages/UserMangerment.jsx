@@ -690,7 +690,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
               </span>
             </div>
           </td>
-          
+
           {/* Employee ID */}
           <td className="px-6 py-4">
             <span className="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
@@ -973,10 +973,10 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
             <thead className="bg-[var(--color-muted)] text-[var(--color-muted-foreground)] uppercase text-[11px] tracking-wider font-semibold">
               <tr>
                 <th className="px-6 py-4">
-                  Employee ID
+                  Employee Name
                 </th>
                 <th className="px-6 py-4">
-                  Employee
+                  Employee ID
                 </th>
                 <th className="px-6 py-4">
                   Email
