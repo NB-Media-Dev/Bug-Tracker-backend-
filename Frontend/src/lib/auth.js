@@ -21,7 +21,9 @@ export const getStoredAuth = () => {
   const testerUser = getLocalStorageJson(TESTER_USER_KEY, null);
 
   if (adminUser && token) {
-    return { role: "admin", user: adminUser };
+    const isCto = (adminUser?.role || "").toString().toLowerCase() === "cto" ||
+      getLocalStorageItem("admin_portal_role", "") === "cto";
+    return { role: isCto ? "cto" : "admin", user: adminUser };
   }
 
   if (developerUser) {
@@ -43,6 +45,7 @@ export const clearAuthStorage = () => {
   removeLocalStorageItem(DEVELOPER_USER_KEY);
   removeLocalStorageItem(TESTER_USER_KEY);
   removeLocalStorageItem(REQUIRE_PWD_CHANGE_KEY);
+  removeLocalStorageItem("admin_portal_role");
 };
 
 

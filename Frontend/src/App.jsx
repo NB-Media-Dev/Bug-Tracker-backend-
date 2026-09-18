@@ -129,7 +129,14 @@ function App() {
 
   const loadAdminNotifications = async () => {
     try {
-      const currentRole = (authUser?.role || authRole || localStorage.getItem("admin_portal_role") || "").toString().toLowerCase();
+      const savedAdminUser = JSON.parse(localStorage.getItem("admin_user") || "null");
+      const currentRole = (
+        authUser?.role ||
+        savedAdminUser?.role ||
+        authRole ||
+        localStorage.getItem("admin_portal_role") ||
+        ""
+      ).toString().toLowerCase();
       const isCtoRole = currentRole === "cto";
 
       const url = isCtoRole
@@ -166,25 +173,7 @@ function App() {
           if (msgLower.startsWith("your project build") || msgLower.includes("submitted successfully")) {
             return false;
           }
-          return (
-            n.message.startsWith("Project:") ||
-            n.message.startsWith("Project ") ||
-            msgLower.includes("closed all bugs") ||
-            msgLower.includes("closed the project") ||
-            msgLower.includes("submitted project build") ||
-            msgLower.includes("sent to tester") ||
-            msgLower.includes("accepted project build") ||
-            msgLower.includes("accepted by tester") ||
-            msgLower.includes("progress is") ||
-            msgLower.includes("not fixed") ||
-            msgLower.includes("resolved") ||
-            n.type === "not_fixed_alert" ||
-            n.type === "bug_resolved_alert" ||
-            n.type === "project_closed" ||
-            n.type === "project_status_updated" ||
-            n.type === "project_submitted" ||
-            n.type === "project_accepted"
-          );
+          return true;
         });
 
         if (combined.length === 0) {
@@ -226,7 +215,7 @@ function App() {
       combined.forEach((n) => {
         if (!n.message) return;
         const msgLower = n.message.toLowerCase();
-        let normKey = msgLower.trim();
+        let normKey = `${n.id || ""}_${msgLower.trim()}`;
 
         if (msgLower.includes("progress is") || msgLower.includes("fully completed")) {
           const projKey = (n.project_name || n.message.split(" ")[0] || "general").trim().toLowerCase();
@@ -276,7 +265,7 @@ function App() {
               };
               if (storedAuth.role === "developer" || storedAuth.role === "tester") {
                 localStorage.setItem(`${storedAuth.role}_user`, JSON.stringify(mergedUser));
-              } else if (storedAuth.role === "admin") {
+              } else if (storedAuth.role === "admin" || storedAuth.role === "cto") {
                 localStorage.setItem("admin_user", JSON.stringify(mergedUser));
               }
               setAuthUser(mergedUser);
@@ -297,7 +286,7 @@ function App() {
       window.removeEventListener("bugs_updated", loadAdminNotifications);
       window.removeEventListener("user_profile_updated", syncUserProfile);
     };
-  }, []);
+  }, [authRole, authUser]);
 
   useEffect(() => {
     if (authRole) {
@@ -327,8 +316,16 @@ function App() {
   };
 
   const handleLoginSuccess = (user, type) => {
-    setAuthRole(type);
+    const isCto = (user?.role || type || "").toString().toLowerCase() === "cto";
+    const effectiveRole = isCto ? "cto" : type;
+    setAuthRole(effectiveRole);
     setAuthUser(user);
+    if (isCto) {
+      localStorage.setItem("admin_portal_role", "cto");
+    } else if (type === "admin") {
+      localStorage.setItem("admin_portal_role", "admin");
+    }
+    loadAdminNotifications();
     navigate("/");
   };
 

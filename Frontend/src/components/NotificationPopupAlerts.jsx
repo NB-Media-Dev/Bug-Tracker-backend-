@@ -252,6 +252,30 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
       };
     }
 
+    if (type === "not_fixed_alert" || msg.includes("not fixed")) {
+      return {
+        title: "Bug Reopened Alert",
+        badgeText: "Not Fixed",
+        accentBar: "bg-rose-600",
+        badgeClass: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
+        iconContainer: "bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        actionButton: "bg-rose-600 hover:bg-rose-700 text-white",
+      };
+    }
+
+    if (type === "bug_resolved_alert" || msg.includes("resolved bug") || msg.includes("as \"resolved\"")) {
+      return {
+        title: "Bug Resolved Alert",
+        badgeText: "Resolved",
+        accentBar: "bg-emerald-600",
+        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
+        iconContainer: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
+        icon: <CheckCircle className="h-4 w-4" />,
+        actionButton: "bg-emerald-600 hover:bg-emerald-700 text-white",
+      };
+    }
+
     if (type === "project_submitted" || type === "build_submitted" || msg.includes("submitted project build") || msg.includes("submitted successfully")) {
       const isDesignerSubmit =
         msg.toLowerCase().includes("designer") ||

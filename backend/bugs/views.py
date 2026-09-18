@@ -1,9 +1,13 @@
 import re
 import time
 import logging
+# pyrefly: ignore [missing-import]
 from rest_framework.views import APIView
+# pyrefly: ignore [missing-import]
 from rest_framework.response import Response
-from rest_framework import status
+# pyrefly: ignore [missing-import]
+from rest_framework import status           
+# pyrefly: ignore [missing-import]
 from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -208,6 +212,20 @@ class BugReportListCreateView(APIView):
 
         self._create_tester_notification(bug, formatted_bug_id, title, tester_name, tester_email, tester_emp_id, dev_emp_id)
         self._create_developer_notification(bug, formatted_bug_id, title, tester_name, tester_emp_id, dev_emp_id)
+        try:
+            Notification.objects.create(
+                recipient_email='cto@company.com',
+                recipient_name='CTO',
+                recipient_role='CTO',
+                recipient_id='CTO001',
+                notification_type='bug_created',
+                message=f'Tester {tester_name} reported new bug [{formatted_bug_id}]: "{title}" in project "{proj_name}"',
+                bug_report=bug,
+                project_name=proj_name
+            )
+        except Exception as e:
+            logger.error(f"Error creating CTO bug_created notification: {e}")
+
         self._create_cto_project_notification(bug)
 
     def _create_cto_project_notification(self, bug):
@@ -474,6 +492,7 @@ class BugReportDetailView(APIView):
                     project_name=updated_bug.module or "General"
                 )
 
+            dev_role_label = dev_role if 'dev_role' in locals() and dev_role else 'Developer'
             if norm_status in ['not fixed', 'not-fixed']:
                 not_fixed_msg = f'Tester {tester_name_clean} marked bug [{formatted_id}] as "Not Fixed" in project "{proj_name}"'
                 Notification.objects.create(
@@ -487,7 +506,7 @@ class BugReportDetailView(APIView):
                     project_name=proj_name
                 )
             elif norm_status in ['resolved', 'fixed']:
-                dev_resolved_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Resolved" in project "{proj_name}"'
+                dev_resolved_msg = f'{dev_role_label} {dev_name_clean} marked bug [{formatted_id}] as "Resolved" in project "{proj_name}"'
                 Notification.objects.create(
                     recipient_email='cto@company.com',
                     recipient_name='CTO',
@@ -495,6 +514,18 @@ class BugReportDetailView(APIView):
                     recipient_id='CTO001',
                     notification_type='bug_resolved_alert',
                     message=dev_resolved_msg,
+                    bug_report=updated_bug,
+                    project_name=proj_name
+                )
+            elif norm_status == 'closed':
+                closed_msg = f'Tester {tester_name_clean} verified and closed bug [{formatted_id}] in project "{proj_name}"'
+                Notification.objects.create(
+                    recipient_email='cto@company.com',
+                    recipient_name='CTO',
+                    recipient_role='CTO',
+                    recipient_id='CTO001',
+                    notification_type='bug_updated',
+                    message=closed_msg,
                     bug_report=updated_bug,
                     project_name=proj_name
                 )
@@ -550,12 +581,36 @@ class NotificationListCreateView(APIView):
         
         notifications = Notification.objects.select_related('bug_report').all().order_by('-created_at')
 
+        is_cto = False
         if role and role.strip().upper() == 'CTO':
-            notifications = notifications.filter(
+            is_cto = True
+        elif recipient_id and recipient_id.strip().upper().startswith('CTO'):
+            is_cto = True
+        elif email or recipient_id:
+            try:
+                emp_cto = Employee.objects.filter(
+                    (Q(company_email__iexact=email) if email else Q()) |
+                    (Q(employee_id__iexact=recipient_id) if recipient_id else Q()),
+                    role__iexact='CTO'
+                ).exists()
+                if emp_cto:
+                    is_cto = True
+            except Exception:
+                pass
+
+        if is_cto:
+            cto_query = (
                 Q(recipient_role__iexact='CTO') |
                 Q(recipient_id__iexact='CTO001') |
+                Q(recipient_id__istartswith='CTO') |
                 Q(recipient_email__iexact='cto@company.com')
             )
+            if email:
+                cto_query |= Q(recipient_email__iexact=email)
+            if recipient_id:
+                cto_query |= Q(recipient_id__iexact=recipient_id)
+
+            notifications = notifications.filter(cto_query)
             serializer = NotificationSerializer(notifications, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         
@@ -774,19 +829,17 @@ class ProjectSubmissionListCreateView(APIView):
         closed_count = project_bugs.filter(Q(status__iexact='Closed') | Q(status__iexact='Resolved')).count()
         pct = int((closed_count / total_count) * 100) if total_count > 0 else 0
 
-        cto_sub_msg = f'{dev_label} submitted project build: "{submission.project_name}"'
-        if not Notification.objects.filter(recipient_role='CTO', message=cto_sub_msg).exists():
-            Notification.objects.create(
-                recipient_email='cto@company.com',
-                recipient_name='CTO',
-                recipient_role='CTO',
-                recipient_id='CTO001',
-                notification_type='project_submitted',
-                message=cto_sub_msg,
-                bug_report=None,
-                project_name=submission.project_name,
-                sender_id=dev_id
-            )
+        Notification.objects.create(
+            recipient_email='cto@company.com',
+            recipient_name='CTO',
+            recipient_role='CTO',
+            recipient_id='CTO001',
+            notification_type='project_submitted',
+            message=sub_msg,
+            bug_report=None,
+            project_name=submission.project_name,
+            sender_id=dev_id
+        )
 
         dev_email = ''
         emp = None
@@ -883,18 +936,17 @@ class ProjectSubmissionDetailView(APIView):
         )
 
         cto_claim_msg = f'Tester {claimed_by} accepted project build "{updated_sub.project_name}"'
-        if not Notification.objects.filter(recipient_role='CTO', message=cto_claim_msg).exists():
-            Notification.objects.create(
-                recipient_email='cto@company.com',
-                recipient_name='CTO',
-                recipient_role='CTO',
-                recipient_id='CTO001',
-                notification_type='project_accepted',
-                message=cto_claim_msg,
-                bug_report=None,
-                project_name=updated_sub.project_name,
-                sender_id=dev_id
-            )
+        Notification.objects.create(
+            recipient_email='cto@company.com',
+            recipient_name='CTO',
+            recipient_role='CTO',
+            recipient_id='CTO001',
+            notification_type='project_accepted',
+            message=cto_claim_msg,
+            bug_report=None,
+            project_name=updated_sub.project_name,
+            sender_id=dev_id
+        )
 
     def patch(self, request, pk):
         submission = get_object_or_404(ProjectSubmission, pk=pk)

@@ -48,6 +48,7 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
 
     clearAuthStorage();
     if (empRole.includes("cto")) {
+      localStorage.setItem("admin_portal_role", "cto");
       setAdminAuth(empData.access, empData.refresh, empData.employee);
       onLoginSuccess(empData.employee);
     } else if (empRole.includes("developer") || empRole.includes("dev") || empRole.includes("designer") || empRole.includes("des")) {
