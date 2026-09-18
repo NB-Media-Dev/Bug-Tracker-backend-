@@ -677,14 +677,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
           key={emp.id}
           className="hover:bg-[var(--color-muted)]/50 transition-colors"
         >
-          {/* Employee ID */}
-          <td className="px-6 py-4">
-            <span className="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              {getFormattedEmployeeId(emp)}
-            </span>
-          </td>
-
-          {/* Employee */}
+           {/* Employee */}
           <td className="px-6 py-4 font-semibold text-foreground">
             <div className="flex items-center gap-2.5">
               <span
@@ -697,7 +690,13 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
               </span>
             </div>
           </td>
-
+          
+          {/* Employee ID */}
+          <td className="px-6 py-4">
+            <span className="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              {getFormattedEmployeeId(emp)}
+            </span>
+          </td>
           {/* Email */}
           <td className="px-6 py-4 font-mono text-xs text-foreground">
             {emp?.company_email ||
