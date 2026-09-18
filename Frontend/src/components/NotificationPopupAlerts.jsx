@@ -377,7 +377,7 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
       default:
         return {
           title: "Project Accepted",
-          badgeText: "Medium",
+          badgeText: "project Accepted",
           accentBar: "bg-blue-500",
           badgeClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800",
           iconContainer: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
