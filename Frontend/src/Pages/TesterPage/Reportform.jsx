@@ -282,13 +282,13 @@ function Reportform({ onNavigate }) {
 
   const loadDevelopers = async () => {
     try {
-      const res = await authFetch('/api/users/?role=Developer');
+      const res = await authFetch('/api/users/?role=Developer,Designer');
       if (res.ok) {
         const data = await res.json();
         const devItems = data.results || (Array.isArray(data) ? data : []);
         if (devItems.length > 0) {
           const formatted = devItems.map((d) => ({
-            id: d.employee_id || `DEV${String(d.id).padStart(3, "0")}`,
+            id: d.employee_id || (d.role === 'Designer' ? `DES${String(d.id).padStart(3, "0")}` : `DEV${String(d.id).padStart(3, "0")}`),
             name: d.name,
           }));
           setDeveloperList(formatted);

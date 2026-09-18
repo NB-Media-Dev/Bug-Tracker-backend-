@@ -237,7 +237,8 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   };
 
   const matchRecipient = (n, devId, devEmail, devName) => {
-    const roleMatch = (n?.recipient_role || "").toLowerCase() === "developer" || !n?.recipient_role;
+    const r = (n?.recipient_role || "").toLowerCase();
+    const roleMatch = r === "developer" || r === "designer" || !r;
     if (!roleMatch) return false;
 
     const cleanDevName = (devName || "").split("(")[0].trim().toLowerCase();
@@ -257,9 +258,10 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
   };
 
   const fetchAPIData = async () => {
+    const activeRole = developer?.role || "Developer";
     const [resNotifs, resBugs] = await Promise.all([
       authFetch(
-        `${API_BASE}/api/bugs/notifications/?recipient_id=${devId}&role=Developer`,
+        `${API_BASE}/api/bugs/notifications/?recipient_id=${devId}&role=${activeRole}`,
       ),
       authFetch(`${API_BASE}/api/bugs/`),
     ]);

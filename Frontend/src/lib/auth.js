@@ -25,7 +25,8 @@ export const getStoredAuth = () => {
   }
 
   if (developerUser) {
-    return { role: "developer", user: developerUser };
+    const userRole = (developerUser.role || "developer").toLowerCase();
+    return { role: userRole === "designer" ? "designer" : "developer", user: developerUser };
   }
 
   if (testerUser) {

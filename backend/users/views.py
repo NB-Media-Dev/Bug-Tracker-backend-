@@ -36,7 +36,15 @@ class EmployeeListView(APIView):
         role = request.query_params.get('role')
         employees = Employee.objects.filter(is_deleted=False).order_by('-created_at')
         if role:
-            employees = employees.filter(role__iexact=role)
+            roles = [r.strip() for r in role.split(',') if r.strip()]
+            if len(roles) == 1:
+                employees = employees.filter(role__iexact=roles[0])
+            else:
+                from django.db.models import Q
+                q = Q()
+                for r in roles:
+                    q |= Q(role__iexact=r)
+                employees = employees.filter(q)
         serializer = EmployeeListSerializer(employees, many=True)
         return Response(
             {

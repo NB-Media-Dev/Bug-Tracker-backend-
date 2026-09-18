@@ -19,7 +19,9 @@ function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = fal
     .slice(0, 2)
     .toUpperCase() || "DV";
 
-  const user = { initials, name: devName, role: "Developer" };
+  const userRole = developer?.role || "Developer";
+  const badgeText = userRole.toLowerCase() === "designer" ? "Des" : "Dev";
+  const user = { initials, name: devName, role: userRole };
 
   return (
     <BaseSidebar
@@ -32,7 +34,7 @@ function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = fal
       onLogout={onLogout}
       navItems={navItems}
       title="Bugtracker"
-      badgeText="Dev"
+      badgeText={badgeText}
       user={user}
     />
   );

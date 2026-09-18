@@ -17,6 +17,7 @@ import {
   User,
   CheckCircle2,
   Code,
+  Palette,
 } from 'lucide-react';
 
 const Toast = React.memo(({ message, type, onClose }) => {
@@ -168,6 +169,9 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
     const developersCount = employees.filter(
       (e) => (e?.role || '').toString().toLowerCase() === 'developer'
     ).length;
+    const designersCount = employees.filter(
+      (e) => (e?.role || '').toString().toLowerCase() === 'designer'
+    ).length;
 
     return [
       {
@@ -194,12 +198,17 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
         color: 'bg-blue-600 text-white shadow-xs',
         accent: 'bg-blue-500',
       },
+      {
+        id: 'designers',
+        label: 'DESIGNERS',
+        value: designersCount,
+        icon: Palette,
+        color: 'bg-pink-600 text-white shadow-xs',
+        accent: 'bg-pink-500',
+      },
     ];
   }, [employees]);
 
-  // --------------------------------------------------
-  // ROLE BADGE
-  // --------------------------------------------------
 
   const getRoleBadge = (role) => {
     const baseClasses =
@@ -214,6 +223,9 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
 
       case 'Tester':
         return `${baseClasses} bg-amber-500/10 text-amber-500 border-amber-500/20`;
+
+      case 'Designer':
+        return `${baseClasses} bg-pink-500/10 text-pink-500 border-pink-500/20`;
 
       default:
         return `${baseClasses} bg-blue-500/10 text-blue-500 border-blue-500/20`;
@@ -824,7 +836,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
 
       {/* STATS - ADMIN ONLY */}
       {!isReadOnlyMode && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((item) => {
             const Icon = item.icon;
 
@@ -929,6 +941,9 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
               <tr>
                 <th className="px-6 py-4">
                   Employee
+                </th>
+                <th className="px-6 py-4">
+                  Employee ID 
                 </th>
 
                 <th className="px-6 py-4">
@@ -1099,6 +1114,9 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
 
                   <option value="CTO">
                     CTO
+                  </option>
+                  <option value="Designer">
+                    Designer
                   </option>
                 </select>
               </div>
@@ -1358,6 +1376,10 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
 
                   <option value="CTO">
                     CTO
+                  </option>
+
+                  <option value="Designer">
+                    Designer
                   </option>
                 </select>
               </div>

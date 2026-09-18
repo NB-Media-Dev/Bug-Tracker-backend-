@@ -419,7 +419,7 @@ function App() {
     );
   }
 
-  if (authRole === "developer") {
+  if (authRole === "developer" || authRole === "designer") {
     return (
       <>
         <DeveloperDashboard developer={authUser} onLogout={triggerLogoutModal} />

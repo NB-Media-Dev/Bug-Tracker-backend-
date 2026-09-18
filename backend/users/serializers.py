@@ -66,7 +66,7 @@ class EmployeeInviteSerializer(serializers.Serializer):
         required=False,
     )
     role = serializers.ChoiceField(
-        choices=['Developer', 'Tester', 'CTO'],
+        choices=['Developer', 'Tester', 'CTO', 'Designer'],
         default='Developer',
         required=False,
     )

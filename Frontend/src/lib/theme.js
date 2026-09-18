@@ -10,7 +10,7 @@ export const THEMES = [
 
 export const getDefaultThemeForRole = (role) => {
   if (role === 'admin') return 'indigo';
-  if (role === 'developer') return 'emerald';
+  if (role === 'developer' || role === 'designer') return 'emerald';
   if (role === 'tester') return 'rose';
   return 'indigo';
 };

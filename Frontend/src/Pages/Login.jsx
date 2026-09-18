@@ -50,9 +50,9 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     if (empRole.includes("cto")) {
       setAdminAuth(empData.access, empData.refresh, empData.employee);
       onLoginSuccess(empData.employee);
-    } else if (empRole.includes("developer") || empRole.includes("dev")) {
+    } else if (empRole.includes("developer") || empRole.includes("dev") || empRole.includes("designer") || empRole.includes("des")) {
       setDeveloperAuth(empData.employee, empData.access, empData.refresh);
-      onDeveloperLoginSuccess(empData.employee, "developer");
+      onDeveloperLoginSuccess(empData.employee, empRole.includes("designer") || empRole.includes("des") ? "designer" : "developer");
     } else {
       setTesterAuth(empData.employee, empData.access, empData.refresh);
       onDeveloperLoginSuccess(empData.employee, "tester");

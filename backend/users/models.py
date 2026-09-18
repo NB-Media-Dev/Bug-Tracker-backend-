@@ -6,6 +6,7 @@ class Employee(models.Model):
         ('Developer', 'Developer'),
         ('Tester', 'Tester'),
         ('CTO', 'CTO'),
+        ('Designer', 'Designer'),
     ]
 
     STATUS_CHOICES = [
@@ -17,6 +18,7 @@ class Employee(models.Model):
         'Tester': 'Ts',
         'Developer': 'Dev',
         'CTO': 'Cto',
+        'Designer': 'Des',
     }
 
     employee_id = models.CharField(

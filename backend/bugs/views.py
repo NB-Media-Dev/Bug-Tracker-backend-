@@ -142,7 +142,7 @@ class BugReportListCreateView(APIView):
             
         emp = Employee.objects.filter(
             Q(employee_id__iexact=dev_id) | Q(name__icontains=dev_id), 
-            role='Developer'
+            role__in=['Developer', 'Designer']
         ).first()
         
         if emp:
@@ -290,7 +290,7 @@ class BugReportListCreateView(APIView):
         try:
             emp = Employee.objects.filter(
                 Q(employee_id__iexact=dev_emp_id) | Q(name__icontains=dev_name_clean), 
-                role='Developer'
+                role__in=['Developer', 'Designer']
             ).first()
             if emp:
                 dev_email = emp.company_email
@@ -301,10 +301,11 @@ class BugReportListCreateView(APIView):
             pass
 
         final_dev_email = dev_email or f"{dev_name_clean.lower().replace(' ', '')}@bugtracker.com"
+        recip_role = emp.role if emp else 'Developer'
         Notification.objects.create(
             recipient_email=final_dev_email,
             recipient_name=dev_name_clean,
-            recipient_role='Developer',
+            recipient_role=recip_role,
             recipient_id=bug.developer_id or dev_emp_id,
             notification_type='bug_assigned',
             message=f'New bug report submitted: [{bug_id}] {title} assigned to you by Tester {tester_name} ({tester_emp_id}).',
@@ -343,7 +344,7 @@ class BugReportDetailView(APIView):
     def get(self, request, pk):
         bug = self._get_bug(pk)
         role = request.query_params.get('role') or request.query_params.get('user_role')
-        if role == 'Developer' and bug.tester_edited:
+        if role in ['Developer', 'Designer'] and bug.tester_edited:
             bug.tester_edited = False
             bug.save(update_fields=['tester_edited'])
         elif role == 'Tester' and bug.dev_resolved:
@@ -411,7 +412,7 @@ class BugReportDetailView(APIView):
                 real_dev_id = dev_id or 'DEV001'
 
                 try:
-                    query = Q(role='Developer')
+                    query = Q(role__in=['Developer', 'Designer'])
                     if dev_id:
                         query &= (Q(employee_id__iexact=dev_id) | Q(name__icontains=dev_name_clean))
                     else:
@@ -427,10 +428,11 @@ class BugReportDetailView(APIView):
                 except Exception as ex:
                     logger.error(f"Error querying employee for dev notification: {ex}")
 
+                dev_role = emp.role if emp else 'Developer'
                 Notification.objects.create(
                     recipient_email=dev_email or f"{dev_name_clean.lower().replace(' ', '')}@bugtracker.com",
                     recipient_name=dev_name_clean,
-                    recipient_role='Developer',
+                    recipient_role=dev_role,
                     recipient_id=real_dev_id,
                     notification_type='bug_updated',
                     message=msg,
@@ -439,12 +441,13 @@ class BugReportDetailView(APIView):
                 )
 
             if norm_status in ['pending', 'in progress', 'in-progress', 'resolved', 'fixed']:
+                dev_role_label = dev_role if 'dev_role' in locals() and dev_role else 'Developer'
                 if norm_status == 'pending':
-                    t_msg = f'Developer {dev_name_clean} marked bug [{formatted_id}] as "Pending"'
+                    t_msg = f'{dev_role_label} {dev_name_clean} marked bug [{formatted_id}] as "Pending"'
                 elif norm_status in ['resolved', 'fixed']:
-                    t_msg = f'Developer {dev_name_clean} resolved bug [{formatted_id}] for project "{proj_name}". Please verify and close.'
+                    t_msg = f'{dev_role_label} {dev_name_clean} resolved bug [{formatted_id}] for project "{proj_name}". Please verify and close.'
                 else:
-                    t_msg = f'Developer {dev_name_clean} updated bug [{formatted_id}] status to "{new_status}"'
+                    t_msg = f'{dev_role_label} {dev_name_clean} updated bug [{formatted_id}] status to "{new_status}"'
 
                 tester_email = updated_bug.tester_email or ""
                 real_tester_id = updated_bug.tester_id or "TS001"
@@ -776,20 +779,22 @@ class ProjectSubmissionListCreateView(APIView):
             )
 
         dev_email = ''
+        emp = None
         try:
             emp = Employee.objects.filter(
                 Q(employee_id__iexact=dev_id) | Q(name__icontains=submission.developer_name.split('(')[0].strip()),
-                role='Developer'
+                role__in=['Developer', 'Designer']
             ).first()
             if emp:
                 dev_email = emp.company_email
         except Exception:
             pass
 
+        recip_role = emp.role if emp else 'Developer'
         Notification.objects.create(
             recipient_email=dev_email,
             recipient_name=submission.developer_name.split('(')[0].strip(),
-            recipient_role='Developer',
+            recipient_role=recip_role,
             recipient_id=dev_id,
             notification_type='project_submitted',
             message=f'Your project build "{submission.project_name}" was submitted successfully to Testers.',
