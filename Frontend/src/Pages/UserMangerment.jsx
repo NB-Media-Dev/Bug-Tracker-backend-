@@ -135,20 +135,47 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
   // FILTER EMPLOYEES
   // --------------------------------------------------
 
+  const getFormattedEmployeeId = (emp) => {
+    if (emp?.employee_id) {
+      const raw = String(emp.employee_id).trim();
+      if (/^[A-Za-z]+\d+$/.test(raw)) {
+        return raw;
+      }
+      if (/^\d+$/.test(raw)) {
+        const role = (emp?.role || 'Developer').toLowerCase();
+        let prefix = 'Dev';
+        if (role.includes('test')) prefix = 'Ts';
+        else if (role.includes('cto')) prefix = 'Cto';
+        else if (role.includes('des')) prefix = 'Des';
+        return `${prefix}${raw.padStart(3, '0')}`;
+      }
+      return raw;
+    }
+    const role = (emp?.role || 'Developer').toLowerCase();
+    let prefix = 'Dev';
+    if (role.includes('test')) prefix = 'Ts';
+    else if (role.includes('cto')) prefix = 'Cto';
+    else if (role.includes('des')) prefix = 'Des';
+    const num = String(emp?.id || 1).padStart(3, '0');
+    return `${prefix}${num}`;
+  };
+
   const filteredEmployees = useMemo(() => {
-    if (!searchQuery.trim()) {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
       return employees;
     }
 
-    const query = searchQuery.toLowerCase().trim();
-
     return employees.filter((emp) => {
+      const empId = getFormattedEmployeeId(emp).toLowerCase();
       const name = emp?.name?.toLowerCase() || '';
       const email = emp?.company_email?.toLowerCase() || '';
       const role = emp?.role?.toLowerCase() || '';
       const status = emp?.status?.toLowerCase() || '';
 
       return (
+        empId.includes(query) ||
         name.includes(query) ||
         email.includes(query) ||
         role.includes(query) ||
@@ -599,7 +626,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
   // --------------------------------------------------
 
   const renderEmployeeRows = () => {
-    const columnCount = isReadOnlyMode ? 6 : 7;
+    const columnCount = isReadOnlyMode ? 7 : 8;
 
     if (loading) {
       return (
@@ -650,6 +677,13 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
           key={emp.id}
           className="hover:bg-[var(--color-muted)]/50 transition-colors"
         >
+          {/* Employee ID */}
+          <td className="px-6 py-4">
+            <span className="inline-flex items-center font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              {getFormattedEmployeeId(emp)}
+            </span>
+          </td>
+
           {/* Employee */}
           <td className="px-6 py-4 font-semibold text-foreground">
             <div className="flex items-center gap-2.5">
@@ -940,16 +974,14 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
             <thead className="bg-[var(--color-muted)] text-[var(--color-muted-foreground)] uppercase text-[11px] tracking-wider font-semibold">
               <tr>
                 <th className="px-6 py-4">
+                  Employee ID
+                </th>
+                <th className="px-6 py-4">
                   Employee
                 </th>
                 <th className="px-6 py-4">
-                  Employee ID 
-                </th>
-
-                <th className="px-6 py-4">
                   Email
                 </th>
-
                 <th className="px-6 py-4">
                   Role
                 </th>

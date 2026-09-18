@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   Shield,
   Bell,
+  Palette,
 } from "lucide-react";
 import AdminPieChart from "./Adminchart";
 import Adminbarchart from "./AdminBarchart";
@@ -107,6 +108,9 @@ function Dasboard({ onNavigate }) {
   const developersCount = employees.filter(
     (e) => e.role?.toLowerCase() === "developer"
   ).length;
+  const designersCount = employees.filter(
+    (e) => e.role?.toLowerCase() === "designer"
+  ).length;
   const totalUsersCount = employees.length;
 
   const onlineEmployees = employees.filter(
@@ -138,6 +142,15 @@ function Dasboard({ onNavigate }) {
       accent: "bg-blue-500",
       icon: Code2Icon,
     },
+    {
+      id: "designers",
+      label: "Designers",
+      value: String(designersCount),
+      icon: Palette,
+      color: "bg-pink-600 text-white shadow-xs",
+      accent: "bg-pink-500",
+    },
+
   ];
 
   const normalizeName = (name) => {

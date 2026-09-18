@@ -1,8 +1,3 @@
-"""
-users/serializers.py
-
-Serializers for Employee CRUD, invite, login, and status operations.
-"""
 
 from rest_framework import serializers
 from .models import Employee
