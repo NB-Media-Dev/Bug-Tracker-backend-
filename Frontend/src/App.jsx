@@ -6,6 +6,7 @@ import Monitor from "./Pages/Monitor";
 import UserMangerment from "./Pages/UserMangerment";
 import Login from "./Pages/Login";
 import DeveloperDashboard from "./Pages/DeveloperDashboard";
+import DesignerDashboard from "./Pages/DesignerPage/DesignerDashboard";
 import TesterDashboard from "./Pages/Testerdashboard";
 import ThemeSelector from "./components/ThemeSelector";
 import UserHeaderPanel from "./components/UserHeaderPanel";
@@ -416,7 +417,20 @@ function App() {
     );
   }
 
-  if (authRole === "developer" || authRole === "designer") {
+  if (authRole === "designer") {
+    return (
+      <>
+        <DesignerDashboard designer={authUser} onLogout={triggerLogoutModal} />
+        <LogoutConfirmationModal
+          isOpen={showLogoutModal}
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      </>
+    );
+  }
+
+  if (authRole === "developer") {
     return (
       <>
         <DeveloperDashboard developer={authUser} onLogout={triggerLogoutModal} />
