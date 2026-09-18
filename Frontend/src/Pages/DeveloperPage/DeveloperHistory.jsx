@@ -11,6 +11,7 @@ function DeveloperHistory({ developer }) {
 
   const devRole = (developer?.role || "Developer").toLowerCase();
   const isDesigner = devRole === "designer";
+  const roleLabel = isDesigner ? "Designer" : "Developer";
   const devName = developer?.name || (isDesigner ? "Designer" : "Vasanthan");
   const fallbackPrefix = isDesigner ? "DES" : "DEV";
   const devId =
@@ -218,12 +219,12 @@ function DeveloperHistory({ developer }) {
       "Description",
       "Severity",
       "Tester Name",
-      "Assigned Developer",
-      "Developer ID",
+      `Assigned ${roleLabel}`,
+      `${roleLabel} ID`,
       "Start Date",
       "Accept Date",
       "Tester Status",
-      "Developer Status",
+      `${roleLabel} Status`,
     ];
 
     const rows = filteredLogs.map((log) => [
@@ -247,7 +248,7 @@ function DeveloperHistory({ developer }) {
 
     downloadFile(
       encodeURI("data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")),
-      `Developer_Resolved_History_${new Date().toISOString().slice(0, 10)}.csv`
+      `${roleLabel}_Resolved_History_${new Date().toISOString().slice(0, 10)}.csv`
     );
   };
 
@@ -269,7 +270,7 @@ function DeveloperHistory({ developer }) {
           <div className="flex items-center gap-2">
             <History className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900">
-              Developer Task History
+              {roleLabel} Task History
             </h1>
           </div>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -347,7 +348,7 @@ function DeveloperHistory({ developer }) {
                 <th className="p-4">Tester Name</th>
                 <th className="p-4 w-28">Start Date</th>
                 <th className="p-4 w-28">Accept Date</th>
-                <th className="p-4 w-32">Developer Status</th>
+                <th className="p-4 w-32">{roleLabel} Status</th>
                 <th className="p-4 w-32">Tester Status</th>
                 <th className="p-4 w-32 text-center">Action</th>
               </tr>
@@ -475,7 +476,7 @@ function DeveloperHistory({ developer }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide font-semibold">
-                    Reported By & Developer
+                    Reported By & {roleLabel}
                   </h4>
                   <p className="text-gray-800 mt-1.5 font-medium">
                     Tester:{" "}
@@ -484,7 +485,7 @@ function DeveloperHistory({ developer }) {
                     </strong>
                   </p>
                   <p className="text-gray-800 mt-1 font-medium">
-                    Developer:{" "}
+                    {roleLabel}:{" "}
                     <strong className="text-gray-800 uppercase">
                       {devName} ({devId})
                     </strong>
@@ -503,7 +504,7 @@ function DeveloperHistory({ developer }) {
                     </strong>
                   </p>
                   <p className="text-gray-800 mt-1 font-medium">
-                    Developer Status:{" "}
+                    {roleLabel} Status:{" "}
                     <strong className="text-emerald-700">
                       {viewingHistory.devStatus || "Resolved"}
                     </strong>

@@ -253,9 +253,14 @@ export default function NotificationPopupAlerts({ role, user, onNotificationClic
     }
 
     if (type === "project_submitted" || type === "build_submitted" || msg.includes("submitted project build") || msg.includes("submitted successfully")) {
+      const isDesignerSubmit =
+        msg.toLowerCase().includes("designer") ||
+        /\bdes\d+/i.test(msg) ||
+        (alert.sender_id || "").toUpperCase().startsWith("DES");
+
       return {
         title: "Project Build Alert",
-        badgeText: msg.includes("designer") ? "Designer Submitted" : "Developer Submitted",
+        badgeText: isDesignerSubmit ? "Designer Submitted" : "Developer Submitted",
         accentBar: "bg-indigo-600",
         badgeClass: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800",
         iconContainer: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",

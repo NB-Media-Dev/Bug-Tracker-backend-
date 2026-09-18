@@ -323,6 +323,10 @@ function Testerdashboard({ tester: propTester, onLogout }) {
 
       const isDes = (s.developer_id || s.developerId || "").toUpperCase().startsWith("DES") || (s.developerName || "").toLowerCase().includes("designer");
       const badgeText = isDes ? "Designer Submitted" : "Developer Submitted";
+      const rolePrefix = isDes ? "Designer" : "Developer";
+      const formattedLabel = devLabel.toLowerCase().startsWith("designer") || devLabel.toLowerCase().startsWith("developer")
+        ? devLabel
+        : `${rolePrefix} ${devLabel}`;
 
       return {
         id: `SUB-${s.id}`,
@@ -337,7 +341,7 @@ function Testerdashboard({ tester: propTester, onLogout }) {
         timestamp: formatTimestamp(s.date_submitted || s.created_at),
         type: "build_submission",
         badge: badgeText,
-        message: `${devLabel} submitted project build: "${s.projectName || s.project_name}"`,
+        message: `${formattedLabel} submitted project build: "${s.projectName || s.project_name}"`,
       };
     });
 

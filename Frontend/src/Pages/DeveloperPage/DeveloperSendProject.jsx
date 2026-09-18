@@ -199,7 +199,7 @@ function DeveloperSendProject({ developer }) {
     }
 
     if (checkDuplicateProject(projectName, editId)) {
-      const errMsg = `You have already submitted a project with the name "${projectName.trim()}". Duplicate project submissions for the same developer are not allowed!`;
+      const errMsg = `You have already submitted a project with the name "${projectName.trim()}". Duplicate project submissions for the same ${roleLabel.toLowerCase()} are not allowed!`;
       setDuplicateError(errMsg);
       alert(errMsg);
       return;
@@ -361,7 +361,7 @@ function DeveloperSendProject({ developer }) {
 
             <div>
               <label htmlFor='devlopername' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Developer Name (Fixed)
+                {roleLabel} Name (Fixed)
               </label>
               <div className="flex items-center gap-2 bg-gray-100 border border-gray-300 px-3.5 py-2.5 rounded-xl text-xs font-bold text-gray-700 cursor-not-allowed">
                 <User size={15} className="text-gray-500" />
@@ -439,7 +439,7 @@ function DeveloperSendProject({ developer }) {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="p-4">Project Name</th>
-                <th className="p-4">Developer</th>
+                <th className="p-4">{roleLabel}</th>
                 <th className="p-4">Testing Link / Action Format</th>
                 <th className="p-4">Submitted Date</th>
                 <th className="p-4 text-center">Action</th>

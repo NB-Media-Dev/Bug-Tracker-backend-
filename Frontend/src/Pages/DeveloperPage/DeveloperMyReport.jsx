@@ -31,6 +31,9 @@ function DeveloperMyReport({ developer }) {
   const devInfo = getDeveloperInfo(developer);
   const devName = devInfo.name;
   const devId = devInfo.id;
+  const devRole = (developer?.role || devInfo.role || "Developer").toLowerCase();
+  const isDesigner = devRole === "designer";
+  const roleLabel = isDesigner ? "Designer" : "Developer";
 
   const toggleProjectExpand = (projName) => {
     setExpandedProjects((prev) => ({
@@ -219,8 +222,6 @@ function DeveloperMyReport({ developer }) {
     }
 
     try {
-      const devRole = (developer?.role || devInfo.role || "Developer").toLowerCase();
-      const roleLabel = devRole === "designer" ? "Designer" : "Developer";
       await authFetch(`/api/bugs/notifications/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -602,7 +603,7 @@ function DeveloperMyReport({ developer }) {
                     </strong>
                   </p>
                   <p className="text-gray-800 mt-1 font-medium">
-                    Developer:{" "}
+                    {roleLabel}:{" "}
                     <strong className="text-gray-800 uppercase">
                       {devName} ({devId})
                     </strong>
@@ -619,7 +620,7 @@ function DeveloperMyReport({ developer }) {
                     </strong>
                   </p>
                   <p className="text-gray-800 mt-1 font-medium">
-                    Developer Status:{" "}
+                    {roleLabel} Status:{" "}
                     <strong className="text-indigo-700">
                       {viewingBug.devStatus || "In Progress"}
                     </strong>

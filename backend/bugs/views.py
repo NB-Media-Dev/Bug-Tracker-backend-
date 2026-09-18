@@ -706,8 +706,18 @@ class ProjectSubmissionListCreateView(APIView):
         target_id = (submission.claimed_by_id or '').strip()
 
         raw_dev_name = (submission.developer_name or '').split('(')[0].strip()
+        sender_emp = None
+        if dev_id:
+            sender_emp = Employee.objects.filter(employee_id__iexact=dev_id).first()
+        if not sender_emp and raw_dev_name:
+            sender_emp = Employee.objects.filter(name__icontains=raw_dev_name, role__in=['Developer', 'Designer']).first()
+
+        sender_role = sender_emp.role if sender_emp else ('Designer' if (dev_id and dev_id.upper().startswith('DES')) else 'Developer')
         dev_label = f"{raw_dev_name} ({dev_id})" if raw_dev_name and dev_id and dev_id.lower() not in raw_dev_name.lower() else (raw_dev_name or dev_id)
-        sub_msg = f'{dev_label} submitted project build: "{submission.project_name}"'
+        if not dev_label.lower().startswith("designer") and not dev_label.lower().startswith("developer"):
+            sub_msg = f'{sender_role} {dev_label} submitted project build: "{submission.project_name}"'
+        else:
+            sub_msg = f'{dev_label} submitted project build: "{submission.project_name}"'
 
         target_testers = []
         if target_name or target_id:

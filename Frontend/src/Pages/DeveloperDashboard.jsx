@@ -645,7 +645,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                 {showProfileModal && (
                   <ProfileModal
                     user={developer}
-                    role="developer"
+                    role={isDesigner ? "designer" : "developer"}
                     onClose={() => setShowProfileModal(false)}
                     onUpdateUser={(updated) => {
                       const updatedUser = { ...developer, ...updated };
@@ -690,8 +690,10 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                               .filter(Boolean);
                             setReadNotifIds((prev) => Array.from(new Set([...prev.map(String), ...allIds])));
 
-                            const existingPopupDismissed = JSON.parse(localStorage.getItem("developer_dismissed_popups") || "[]");
+                            const roleDismissKey = isDesigner ? "designer_dismissed_popups" : "developer_dismissed_popups";
+                            const existingPopupDismissed = JSON.parse(localStorage.getItem(roleDismissKey) || localStorage.getItem("developer_dismissed_popups") || "[]");
                             const updatedPopupDismissed = Array.from(new Set([...existingPopupDismissed.map(String), ...allIds]));
+                            localStorage.setItem(roleDismissKey, JSON.stringify(updatedPopupDismissed));
                             localStorage.setItem("developer_dismissed_popups", JSON.stringify(updatedPopupDismissed));
 
                             setNotifications((prev) =>
@@ -744,9 +746,12 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                                   }).catch(() => {});
                                 }
 
-                                const existingPopupDismissed = JSON.parse(localStorage.getItem("developer_dismissed_popups") || "[]");
+                                const roleDismissKey = isDesigner ? "designer_dismissed_popups" : "developer_dismissed_popups";
+                                const existingPopupDismissed = JSON.parse(localStorage.getItem(roleDismissKey) || localStorage.getItem("developer_dismissed_popups") || "[]");
                                 if (!existingPopupDismissed.map(String).includes(notifIdStr)) {
-                                  localStorage.setItem("developer_dismissed_popups", JSON.stringify([...existingPopupDismissed.map(String), notifIdStr]));
+                                  const updatedDismissed = [...existingPopupDismissed.map(String), notifIdStr];
+                                  localStorage.setItem(roleDismissKey, JSON.stringify(updatedDismissed));
+                                  localStorage.setItem("developer_dismissed_popups", JSON.stringify(updatedDismissed));
                                 }
 
                                 setShowNotifDropdown(false);
