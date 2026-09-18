@@ -16,7 +16,7 @@ function DeveloperSendProject({ developer }) {
 
   const [projectName, setProjectName] = useState('');
   const [projectLink, setProjectLink] = useState('');
-  const [version, setVersion] = useState('v0.1');
+  const [version, setVersion] = useState(isDesigner ? '' : 'v0.1');
   const [submissionMode, setSubmissionMode] = useState('url');
   const [testers, setTesters] = useState([]);
   const [editId, setEditId] = useState(null);
@@ -119,7 +119,7 @@ function DeveloperSendProject({ developer }) {
   const resetSubmissionForm = () => {
     setProjectName('');
     setProjectLink('');
-    setVersion('v0.1');
+    setVersion(isDesigner ? '' : 'v0.1');
     setEditId(null);
     setDuplicateError('');
   };
@@ -131,7 +131,7 @@ function DeveloperSendProject({ developer }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project_name: projectName.trim(),
-          version: version || 'v0.1',
+          version: isDesigner ? '' : (version || 'v0.1'),
           project_link: computedLinkField,
           projectLink: computedLinkField,
         })
@@ -154,14 +154,17 @@ function DeveloperSendProject({ developer }) {
   const handleCreateSubmission = async (computedLinkField) => {
     const subId = createBuildSubmissionId(projectName, devId, submittedProjects);
 
+    const effectiveVersion = isDesigner ? '' : (version || 'v0.1');
     const postPayload = {
       id: subId,
       project_name: projectName.trim(),
-      version: version || 'v0.1',
+      version: effectiveVersion,
       projectLink: computedLinkField,
       developer_name: fullDevName,
       developer_id: devId,
-      subject: `${projectName.trim()} (${version || 'v0.1'}) Project Build Submission`,
+      subject: isDesigner
+        ? `${projectName.trim()} Project Submission`
+        : `${projectName.trim()} (${effectiveVersion}) Project Build Submission`,
       status: "Unread",
       downloaded: "false",
       project_link: computedLinkField,
@@ -175,7 +178,11 @@ function DeveloperSendProject({ developer }) {
       });
       if (res.ok) {
         loadSubmissions();
-        sendAdminNotification(`${roleLabel} ${fullDevName} submitted a project build for "${projectName.trim()}" (${version || 'v0.1'}).`);
+        sendAdminNotification(
+          isDesigner
+            ? `${roleLabel} ${fullDevName} submitted project "${projectName.trim()}".`
+            : `${roleLabel} ${fullDevName} submitted a project build for "${projectName.trim()}" (${effectiveVersion}).`
+        );
         setSuccessMessage(`Build logged successfully!`);
         resetSubmissionForm();
         setTimeout(() => setSuccessMessage(''), 4000);
@@ -210,7 +217,7 @@ function DeveloperSendProject({ developer }) {
       return;
     }
 
-    const computedLinkField = submissionMode === 'url'
+    const computedLinkField = (isDesigner || submissionMode === 'url')
       ? projectLink.trim()
       : "Your APK file has been successfully submitted for testing";
 
@@ -285,10 +292,14 @@ function DeveloperSendProject({ developer }) {
       <div>
         <div className="flex items-center gap-2">
           <FileArchive className="h-6 w-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Send Project Build to Testers</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isDesigner ? "Send Project to Testers" : "Send Project Build to Testers"}
+          </h1>
         </div>
         <p className="text-sm text-gray-500 mt-0.5">
-          Provide the project URL or toggle actions to dispatch notification stacks dynamically.
+          {isDesigner
+            ? "Provide the project link to dispatch directly to testers for review."
+            : "Provide the project URL or toggle actions to dispatch notification stacks dynamically."}
         </p>
       </div>
 
@@ -299,22 +310,24 @@ function DeveloperSendProject({ developer }) {
         </div>
       )}
 
-      <div className="flex items-center gap-4 bg-gray-100 p-1.5 rounded-xl max-w-xs">
-        <button
-          type="button"
-          onClick={() => setSubmissionMode('url')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${submissionMode === 'url' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
-        >
-          <Link size={14} /> URL Option
-        </button>
-        <button
-          type="button"
-          onClick={() => setSubmissionMode('apk')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${submissionMode === 'apk' ? 'bg-white text-emerald-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
-        >
-          <UploadCloud size={14} /> APK Mode
-        </button>
-      </div>
+      {!isDesigner && (
+        <div className="flex items-center gap-4 bg-gray-100 p-1.5 rounded-xl max-w-xs">
+          <button
+            type="button"
+            onClick={() => setSubmissionMode('url')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${submissionMode === 'url' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+          >
+            <Link size={14} /> URL Option
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubmissionMode('apk')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg transition-all ${submissionMode === 'apk' ? 'bg-white text-emerald-600 shadow-xs' : 'text-gray-500 hover:text-gray-900'}`}
+          >
+            <UploadCloud size={14} /> APK Mode
+          </button>
+        </div>
+      )}
 
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-2xs">
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -342,26 +355,39 @@ function DeveloperSendProject({ developer }) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor='version' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                Version <span className="text-red-500">*</span>
-              </label>
-              <input
-                id='version'
-                name='version'
-                type="text"
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-                placeholder="e.g. v0.1"
-                className="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-gray-50/30 font-semibold"
-                required
-              />
-            </div>
+          {!isDesigner ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor='version' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Version <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id='version'
+                  name='version'
+                  type="text"
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  placeholder="e.g. v0.1"
+                  className="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-gray-50/30 font-semibold"
+                  required={!isDesigner}
+                />
+              </div>
 
+              <div>
+                <label htmlFor='devlopername' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Developer Name (Fixed)
+                </label>
+                <div className="flex items-center gap-2 bg-gray-100 border border-gray-300 px-3.5 py-2.5 rounded-xl text-xs font-bold text-gray-700 cursor-not-allowed">
+                  <User size={15} className="text-gray-500" />
+                  <span>{fullDevName}</span>
+                  <span className="ml-auto text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-semibold uppercase">Auto-Filled</span>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div>
               <label htmlFor='devlopername' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                {roleLabel} Name (Fixed)
+                Designer Name (Fixed)
               </label>
               <div className="flex items-center gap-2 bg-gray-100 border border-gray-300 px-3.5 py-2.5 rounded-xl text-xs font-bold text-gray-700 cursor-not-allowed">
                 <User size={15} className="text-gray-500" />
@@ -369,9 +395,9 @@ function DeveloperSendProject({ developer }) {
                 <span className="ml-auto text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-semibold uppercase">Auto-Filled</span>
               </div>
             </div>
-          </div>
+          )}
 
-          {submissionMode === 'url' ? (
+          {(isDesigner || submissionMode === 'url') ? (
             <div className="space-y-4">
               <div>
                 <label htmlFor='url' className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -383,9 +409,9 @@ function DeveloperSendProject({ developer }) {
                   name='url'
                   value={projectLink}
                   onChange={(e) => setProjectLink(e.target.value)}
-                  placeholder="e.g. https://localhost:3000/project"
+                  placeholder={isDesigner ? "e.g. https://www.figma.com/file/... or https://localhost:3000/design" : "e.g. https://localhost:3000/project"}
                   className="w-full px-3.5 py-2.5 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-gray-50/30 font-medium"
-                  required={submissionMode === 'url'}
+                  required
                 />
               </div>
 
@@ -394,7 +420,7 @@ function DeveloperSendProject({ developer }) {
                   type="submit"
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  <Send size={15} /> {editId ? "Update Build Submission" : "Send Build to All Testers"}
+                  <Send size={15} /> {editId ? `Update ${isDesigner ? 'Project' : 'Build'} Submission` : `Send ${isDesigner ? 'Project' : 'Build'} to All Testers`}
                 </button>
                 {editId && (
                   <button
@@ -458,9 +484,11 @@ function DeveloperSendProject({ developer }) {
                           <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded text-xs border border-blue-200 font-bold uppercase tracking-wider">
                             {item.projectName || item.project_name}
                           </span>
-                          <span className="bg-purple-100 text-purple-800 text-[10px] px-2 py-0.5 rounded font-extrabold border border-purple-300 uppercase tracking-wider">
-                            {item.version || 'v0.1'}
-                          </span>
+                          {!isDesigner && item.version && (
+                            <span className="bg-purple-100 text-purple-800 text-[10px] px-2 py-0.5 rounded font-extrabold border border-purple-300 uppercase tracking-wider">
+                              {item.version}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="p-4 font-semibold text-gray-800 uppercase">{item.developerName || item.developer_name}</td>
@@ -489,9 +517,9 @@ function DeveloperSendProject({ developer }) {
                             onClick={() => {
                               setEditId(item.id);
                               setProjectName(item.projectName || item.project_name || '');
-                              setVersion(item.version || 'v0.1');
+                              setVersion(isDesigner ? '' : (item.version || 'v0.1'));
                               setProjectLink(isLinkFormat ? linkVal : '');
-                              setSubmissionMode(isLinkFormat ? 'url' : 'apk');
+                              setSubmissionMode(isDesigner ? 'url' : (isLinkFormat ? 'url' : 'apk'));
                               setDuplicateError('');
                             }}
                             className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"

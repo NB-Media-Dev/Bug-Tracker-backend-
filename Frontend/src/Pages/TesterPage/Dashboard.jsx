@@ -264,20 +264,38 @@ function Dashboard({ onNavigate }) {
         <span className="text-[9px] text-gray-400 font-mono shrink-0">{build.date || "Just now"}</span>
       </div>
 
-      <p className="text-[10px] text-gray-600 leading-snug">
-        Developer <strong>{build.developerName || build.developer_name}</strong> submitted Link: {build.projectLink || build.project_link ? (
-          <a
-            href={build.projectLink || build.project_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded font-mono text-[10px] hover:underline break-all"
-          >
-            {build.projectLink || build.project_link}
-          </a>
-        ) : (
-          <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">{build.zipFileName || "No link"}</code>
-        )}
-      </p>
+      {(() => {
+        const isDesignerSender =
+          (build.developer_id || '').toUpperCase().startsWith('DES') ||
+          (build.developerName || build.developer_name || '').toLowerCase().includes('designer');
+        const senderLabel = isDesignerSender ? 'Designer' : 'Developer';
+        const linkVal = build.projectLink || build.project_link || '';
+        const isUrl = linkVal.startsWith('http://') || linkVal.startsWith('https://');
+
+        return (
+          <p className="text-[10px] text-gray-600 leading-snug">
+            {senderLabel} <strong>{build.developerName || build.developer_name}</strong> submitted:{" "}
+            {linkVal ? (
+              isUrl ? (
+                <a
+                  href={linkVal}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded font-mono text-[10px] hover:underline break-all"
+                >
+                  {linkVal}
+                </a>
+              ) : (
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.5 rounded font-semibold text-[10px]">
+                  {linkVal}
+                </span>
+              )
+            ) : (
+              <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-[10px]">{build.zipFileName || "No link"}</code>
+            )}
+          </p>
+        );
+      })()}
 
       <div className="pt-1 flex items-center justify-end">
         <button

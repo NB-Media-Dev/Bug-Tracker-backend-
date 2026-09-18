@@ -330,7 +330,12 @@ function InboxDashboard({ onNavigate }) {
                       {(activeMessage.developerName || activeMessage.developer_name || 'DV').substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold block">Developer</span>
+                      <span className="text-[9px] text-gray-400 uppercase tracking-wider font-semibold block">
+                        {((activeMessage.developer_id || activeMessage.developerId || '').toUpperCase().startsWith('DES') ||
+                          (activeMessage.developerName || activeMessage.developer_name || '').toLowerCase().includes('designer'))
+                          ? 'Designer'
+                          : 'Developer'}
+                      </span>
                       <strong className="text-gray-900 text-xs font-bold">{activeMessage.developerName || activeMessage.developer_name}</strong>
                     </div>
                   </div>
