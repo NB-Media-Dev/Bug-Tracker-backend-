@@ -22,22 +22,58 @@ export function getUserAvatarKey(user) {
   return keys.length > 0 ? keys[0] : null;
 }
 
-export function getStoredAvatar(user) {
+export function getRoleAvatarKey(roleOrUser) {
+  if (!roleOrUser) return null;
+  const role = typeof roleOrUser === "string"
+    ? roleOrUser
+    : (roleOrUser.role || roleOrUser.jobTitle || (roleOrUser.is_staff ? "admin" : ""));
+  const clean = String(role).toLowerCase().trim();
+  if (clean.includes("admin")) return "role_avatar_admin";
+  if (clean.includes("cto")) return "role_avatar_cto";
+  if (clean.includes("designer") || clean === "des") return "role_avatar_designer";
+  if (clean.includes("developer") || clean === "dev") return "role_avatar_developer";
+  if (clean.includes("tester")) return "role_avatar_tester";
+  return null;
+}
+
+export function getStoredAvatar(user, explicitRole) {
   if (user?.avatarUrl) return user.avatarUrl;
   if (user?.avatar) return user.avatar;
 
+  // 1. Specific user keys (email, username, name, id)
   const keys = getUserAvatarKeys(user);
   for (const key of keys) {
     const saved = localStorage.getItem(key);
     if (saved) return saved;
   }
 
-  const fallbackGlobal = localStorage.getItem("current_user_avatar");
-  if (fallbackGlobal) return fallbackGlobal;
+  // 2. Role-based avatar key (e.g. role_avatar_admin)
+  const roleKey = getRoleAvatarKey(explicitRole || user);
+  if (roleKey) {
+    const roleSaved = localStorage.getItem(roleKey);
+    if (roleSaved) return roleSaved;
+  }
 
-  for (const roleKey of ["tester_user", "developer_user", "admin_user"]) {
+  // Check admin specific aliases if user is admin or currently in admin portal
+  const isUserAdmin = (explicitRole || user?.role || "").toString().toLowerCase().includes("admin") ||
+    user?.is_staff ||
+    localStorage.getItem("active_role") === "admin" ||
+    (typeof window !== "undefined" && window.location.pathname.startsWith("/user-management"));
+  if (isUserAdmin) {
+    const adminSaved = localStorage.getItem("role_avatar_admin") ||
+      localStorage.getItem("admin_role_avatar") ||
+      localStorage.getItem("admin_avatar");
+    if (adminSaved) return adminSaved;
+  }
+
+  // 3. Stored role user fallback
+  const checkOrder = isUserAdmin
+    ? ["admin_user", "developer_user", "tester_user"]
+    : ["tester_user", "developer_user", "admin_user"];
+
+  for (const roleStorageKey of checkOrder) {
     try {
-      const stored = localStorage.getItem(roleKey);
+      const stored = localStorage.getItem(roleStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed?.avatarUrl) return parsed.avatarUrl;
@@ -46,10 +82,14 @@ export function getStoredAvatar(user) {
     } catch {}
   }
 
+  // 4. Fallback global
+  const fallbackGlobal = localStorage.getItem("current_user_avatar");
+  if (fallbackGlobal) return fallbackGlobal;
+
   return null;
 }
 
-export function saveStoredAvatar(user, avatarUrl) {
+export function saveStoredAvatar(user, avatarUrl, explicitRole) {
   const keys = getUserAvatarKeys(user);
   keys.forEach((key) => {
     if (avatarUrl) {
@@ -58,6 +98,30 @@ export function saveStoredAvatar(user, avatarUrl) {
       localStorage.removeItem(key);
     }
   });
+
+  const roleKey = getRoleAvatarKey(explicitRole || user);
+  if (roleKey) {
+    if (avatarUrl) {
+      localStorage.setItem(roleKey, avatarUrl);
+    } else {
+      localStorage.removeItem(roleKey);
+    }
+  }
+
+  const isUserAdmin = (explicitRole || user?.role || "").toString().toLowerCase().includes("admin") ||
+    user?.is_staff ||
+    localStorage.getItem("active_role") === "admin";
+  if (isUserAdmin) {
+    if (avatarUrl) {
+      localStorage.setItem("admin_role_avatar", avatarUrl);
+      localStorage.setItem("admin_avatar", avatarUrl);
+      localStorage.setItem("role_avatar_admin", avatarUrl);
+    } else {
+      localStorage.removeItem("admin_role_avatar");
+      localStorage.removeItem("admin_avatar");
+      localStorage.removeItem("role_avatar_admin");
+    }
+  }
 
   if (avatarUrl) {
     localStorage.setItem("current_user_avatar", avatarUrl);

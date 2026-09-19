@@ -8,16 +8,45 @@ POST /api/auth/logout/  — client-side token removal (stateless JWT)
 GET  /api/auth/me/      — returns current admin profile
 """
 
+# pyrefly: ignore [missing-import]
 from rest_framework.views import APIView
+# pyrefly: ignore [missing-import]
 from rest_framework.response import Response
+# pyrefly: ignore [missing-import]
 from rest_framework import status
+# pyrefly: ignore [missing-import]
 from rest_framework.permissions import AllowAny, IsAuthenticated
+# pyrefly: ignore [missing-import]
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import LoginSerializer, AdminProfileSerializer
 
 
 from django.utils import timezone
+from pathlib import Path
+from django.conf import settings
+
+def get_admin_avatar_data():
+    try:
+        avatar_dir = Path(settings.MEDIA_ROOT) / 'avatars'
+        avatar_file = avatar_dir / 'admin_avatar.txt'
+        if avatar_file.exists():
+            return avatar_file.read_text(encoding='utf-8').strip()
+    except Exception:
+        pass
+    return ''
+
+def set_admin_avatar_data(avatar_str):
+    try:
+        avatar_dir = Path(settings.MEDIA_ROOT) / 'avatars'
+        avatar_dir.mkdir(parents=True, exist_ok=True)
+        avatar_file = avatar_dir / 'admin_avatar.txt'
+        if avatar_str:
+            avatar_file.write_text(str(avatar_str).strip(), encoding='utf-8')
+        elif avatar_file.exists():
+            avatar_file.unlink()
+    except Exception:
+        pass
 
 class LoginView(APIView):
     """
@@ -49,6 +78,7 @@ class LoginView(APIView):
         refresh_token = str(refresh)
 
         # Build the admin profile payload
+        avatar_data = get_admin_avatar_data()
         profile = AdminProfileSerializer({
             'id': user.id,
             'email': user.email,
@@ -56,6 +86,7 @@ class LoginView(APIView):
             'first_name': user.first_name,
             'last_name': user.last_name,
             'is_staff': user.is_staff,
+            'avatar': avatar_data,
         })
 
         return Response(
@@ -98,6 +129,7 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
+        avatar_data = get_admin_avatar_data()
         profile = AdminProfileSerializer({
             'id': user.id,
             'email': user.email,
@@ -105,6 +137,7 @@ class MeView(APIView):
             'first_name': user.first_name,
             'last_name': user.last_name,
             'is_staff': user.is_staff,
+            'avatar': avatar_data,
         })
         return Response(profile.data, status=status.HTTP_200_OK)
 
@@ -115,6 +148,13 @@ class MeView(APIView):
             user.username = name
             user.first_name = name
             user.save()
+
+        if 'avatar' in request.data:
+            set_admin_avatar_data(request.data.get('avatar') or '')
+        elif 'avatarUrl' in request.data:
+            set_admin_avatar_data(request.data.get('avatarUrl') or '')
+
+        avatar_data = get_admin_avatar_data()
         profile = AdminProfileSerializer({
             'id': user.id,
             'email': user.email,
@@ -122,6 +162,7 @@ class MeView(APIView):
             'first_name': user.first_name,
             'last_name': user.last_name,
             'is_staff': user.is_staff,
+            'avatar': avatar_data,
         })
         return Response(profile.data, status=status.HTTP_200_OK)
 

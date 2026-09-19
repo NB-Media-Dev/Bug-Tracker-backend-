@@ -4,6 +4,7 @@ accounts/serializers.py
 Serializers for admin authentication.
 """
 
+# pyrefly: ignore [missing-import]
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
@@ -54,3 +55,4 @@ class AdminProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     is_staff = serializers.BooleanField()
+    avatar = serializers.CharField(required=False, allow_blank=True, default='')
