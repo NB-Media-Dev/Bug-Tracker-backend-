@@ -790,7 +790,7 @@ function App() {
           </div>
         </header>
 
-        <main className="p-3 sm:p-6 flex-1 min-h-0 overflow-x-hidden overflow-y-auto bg-white dark:bg-slate-900 min-w-0 transition-colors duration-300">
+        <main className="p-3 sm:p-6 flex-1 min-h-0 overflow-x-hidden overflow-y-auto bg-[oklch(0.98_0.005_30)] dark:bg-[oklch(0.12_0.005_30)] min-w-0">
           {renderPage()}
         </main>
       </div>
