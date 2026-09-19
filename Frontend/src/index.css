@@ -61,16 +61,6 @@
     --theme-border-hex: #c7d2fe;
     --theme-text-hex: #3730a3;
     --theme-gradient: linear-gradient(135deg, #4f46e5, #6366f1);
-    --sidebar-bg: #0d0f22;
-    --sidebar-border: #1b1f42;
-    --sidebar-item-hover: rgba(79, 70, 229, 0.14);
-    --sidebar-badge-bg: rgba(79, 70, 229, 0.22);
-    --sidebar-badge-text: #a5b4fc;
-    --sidebar-badge-border: rgba(99, 102, 241, 0.35);
-    --sidebar-glow: rgba(79, 70, 229, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #f7f6ff 40%, #eef0ff 100%);
-    --header-border: #c7d2fe;
-    --header-accent: #4f46e5;
 }
 
 /* 2. Tech Emerald Theme (Developer Default) */
@@ -84,16 +74,6 @@
     --theme-border-hex: #a7f3d0;
     --theme-text-hex: #065f46;
     --theme-gradient: linear-gradient(135deg, #059669, #10b981);
-    --sidebar-bg: #041610;
-    --sidebar-border: #0d3625;
-    --sidebar-item-hover: rgba(5, 150, 105, 0.14);
-    --sidebar-badge-bg: rgba(5, 150, 105, 0.22);
-    --sidebar-badge-text: #6ee7b7;
-    --sidebar-badge-border: rgba(16, 185, 129, 0.35);
-    --sidebar-glow: rgba(5, 150, 105, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #f2fcf7 40%, #e8f9f1 100%);
-    --header-border: #a7f3d0;
-    --header-accent: #059669;
 }
 
 /* 3. Sunset Rose Theme (Tester Default) */
@@ -107,16 +87,6 @@
     --theme-border-hex: #fecdd3;
     --theme-text-hex: #9f1239;
     --theme-gradient: linear-gradient(135deg, #e11d48, #f43f5e);
-    --sidebar-bg: #18050e;
-    --sidebar-border: #3a0e21;
-    --sidebar-item-hover: rgba(225, 29, 72, 0.14);
-    --sidebar-badge-bg: rgba(225, 29, 72, 0.22);
-    --sidebar-badge-text: #fda4af;
-    --sidebar-badge-border: rgba(244, 63, 94, 0.35);
-    --sidebar-glow: rgba(225, 29, 72, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #fff4f6 40%, #ffe9ed 100%);
-    --header-border: #fecdd3;
-    --header-accent: #e11d48;
 }
 
 /* 4. Ocean Cyan Theme */
@@ -130,16 +100,6 @@
     --theme-border-hex: #a5f3fc;
     --theme-text-hex: #155e75;
     --theme-gradient: linear-gradient(135deg, #0891b2, #06b6d4);
-    --sidebar-bg: #04161d;
-    --sidebar-border: #0e3544;
-    --sidebar-item-hover: rgba(8, 145, 178, 0.14);
-    --sidebar-badge-bg: rgba(8, 145, 178, 0.22);
-    --sidebar-badge-text: #67e8f9;
-    --sidebar-badge-border: rgba(6, 182, 212, 0.35);
-    --sidebar-glow: rgba(8, 145, 178, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #f1fdfd 40%, #e4f9fb 100%);
-    --header-border: #a5f3fc;
-    --header-accent: #0891b2;
 }
 
 /* 5. Deep Amber Theme */
@@ -153,16 +113,6 @@
     --theme-border-hex: #fde68a;
     --theme-text-hex: #92400e;
     --theme-gradient: linear-gradient(135deg, #d97706, #f59e0b);
-    --sidebar-bg: #160e03;
-    --sidebar-border: #362308;
-    --sidebar-item-hover: rgba(217, 119, 6, 0.14);
-    --sidebar-badge-bg: rgba(217, 119, 6, 0.22);
-    --sidebar-badge-text: #fcd34d;
-    --sidebar-badge-border: rgba(245, 158, 11, 0.35);
-    --sidebar-glow: rgba(217, 119, 6, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #fffdf4 40%, #fdf6e2 100%);
-    --header-border: #fde68a;
-    --header-accent: #d97706;
 }
 
 /* 6. Mystic Violet Theme */
@@ -176,16 +126,6 @@
     --theme-border-hex: #e9d5ff;
     --theme-text-hex: #6b21a8;
     --theme-gradient: linear-gradient(135deg, #9333ea, #a855f7);
-    --sidebar-bg: #12051d;
-    --sidebar-border: #2e0f47;
-    --sidebar-item-hover: rgba(147, 51, 234, 0.14);
-    --sidebar-badge-bg: rgba(147, 51, 234, 0.22);
-    --sidebar-badge-text: #d8b4fe;
-    --sidebar-badge-border: rgba(168, 85, 247, 0.35);
-    --sidebar-glow: rgba(147, 51, 234, 0.4);
-    --header-bg: linear-gradient(90deg, #ffffff 0%, #fcf7ff 40%, #f6ecff 100%);
-    --header-border: #e9d5ff;
-    --header-accent: #9333ea;
 }
 
 /* 7. Midnight Slate Theme */
@@ -206,126 +146,6 @@
     --theme-border-hex: #334155;
     --theme-text-hex: #93c5fd;
     --theme-gradient: linear-gradient(135deg, #0f172a, #1e293b);
-    --sidebar-bg: #0a0e1a;
-    --sidebar-border: #1e293b;
-    --sidebar-item-hover: rgba(59, 130, 246, 0.14);
-    --sidebar-badge-bg: rgba(59, 130, 246, 0.22);
-    --sidebar-badge-text: #93c5fd;
-    --sidebar-badge-border: rgba(96, 165, 250, 0.35);
-    --sidebar-glow: rgba(59, 130, 246, 0.4);
-    --header-bg: linear-gradient(90deg, #0a0e1a 0%, #111827 50%, #1e293b 100%);
-    --header-border: #334155;
-    --header-accent: #3b82f6;
-}
-
-/* Dark mode header overrides */
-.dark[data-theme="indigo"], [data-theme="indigo"].dark {
-    --header-bg: linear-gradient(90deg, #0a0c1e 0%, #0d0f24 50%, #131636 100%);
-    --header-border: #1b1f42;
-}
-.dark[data-theme="emerald"], [data-theme="emerald"].dark {
-    --header-bg: linear-gradient(90deg, #03120d 0%, #051912 50%, #0a261c 100%);
-    --header-border: #0d3625;
-}
-.dark[data-theme="rose"], [data-theme="rose"].dark {
-    --header-bg: linear-gradient(90deg, #13040b 0%, #1a0610 50%, #290a19 100%);
-    --header-border: #3a0e21;
-}
-.dark[data-theme="cyan"], [data-theme="cyan"].dark {
-    --header-bg: linear-gradient(90deg, #031117 0%, #051820 50%, #092734 100%);
-    --header-border: #0e3544;
-}
-.dark[data-theme="amber"], [data-theme="amber"].dark {
-    --header-bg: linear-gradient(90deg, #120a02 0%, #170e04 50%, #261706 100%);
-    --header-border: #362308;
-}
-.dark[data-theme="purple"], [data-theme="purple"].dark {
-    --header-bg: linear-gradient(90deg, #0e0417 0%, #130620 50%, #210a34 100%);
-    --header-border: #2e0f47;
-}
-.dark[data-theme="midnight"], [data-theme="midnight"].dark {
-    --header-bg: linear-gradient(90deg, #080b14 0%, #0d1221 50%, #141c30 100%);
-    --header-border: #1e293b;
-}
-
-/* ── Theme-aware Navbar (Sidebar) ─────────────────────────────────────── */
-[data-theme] aside {
-    background: var(--sidebar-bg, #0f172a) !important;
-    border-right: 1px solid var(--sidebar-border, #1e293b) !important;
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-[data-theme] aside .border-slate-800,
-[data-theme] aside .border-slate-700 {
-    border-color: var(--sidebar-border, #1e293b) !important;
-}
-
-[data-theme] aside .hover\:bg-slate-800:hover,
-[data-theme] aside .hover\:bg-slate-800\/60:hover {
-    background-color: var(--sidebar-item-hover, rgba(255, 255, 255, 0.08)) !important;
-}
-
-[data-theme] aside .bg-blue-900\/40 {
-    background-color: var(--sidebar-badge-bg) !important;
-    color: var(--sidebar-badge-text) !important;
-    border-color: var(--sidebar-badge-border) !important;
-}
-
-[data-theme] aside .bg-blue-600 {
-    background-color: var(--sidebar-active-bg, var(--theme-hex)) !important;
-    box-shadow: 0 4px 14px 0 var(--sidebar-glow) !important;
-}
-
-[data-theme] aside .text-blue-400 {
-    color: var(--sidebar-badge-text) !important;
-}
-
-[data-theme] aside .bottom-\[72px\] {
-    background-color: var(--sidebar-bg, #1e293b) !important;
-    border-color: var(--sidebar-border, #334155) !important;
-}
-
-/* ── Theme-aware Header Bar ───────────────────────────────────────────── */
-[data-theme] header {
-    background: var(--header-bg, #ffffff) !important;
-    border-bottom: 1px solid var(--header-border, #e2e8f0) !important;
-    border-top: 3px solid var(--header-accent, var(--theme-hex)) !important;
-    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04) !important;
-    transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-[data-theme] header span.uppercase {
-    color: var(--theme-hex) !important;
-}
-
-[data-theme] header .bg-slate-100 {
-    background-color: rgba(255, 255, 255, 0.85) !important;
-    border-color: var(--header-border, #e2e8f0) !important;
-    color: var(--theme-text-hex) !important;
-}
-
-.dark[data-theme] header .bg-slate-100,
-[data-theme].dark header .bg-slate-100 {
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    border-color: var(--header-border, #1e293b) !important;
-    color: var(--theme-text-hex) !important;
-}
-
-[data-theme] header .border-gray-200 {
-    border-color: var(--header-border, #e2e8f0) !important;
-}
-
-[data-theme] header .hover\:bg-gray-100:hover,
-[data-theme] header .hover\:bg-gray-200:hover {
-    background-color: var(--theme-soft-hex) !important;
-}
-
-[data-theme] .group:hover .group-hover\:bg-indigo-600 {
-    background-color: var(--theme-hex) !important;
-}
-
-[data-theme] .group:hover .group-hover\:text-indigo-600 {
-    color: var(--theme-hex) !important;
 }
 
 /* ── Dynamic UI Color Overrides for Themes ────────────────────────────── */
