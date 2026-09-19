@@ -354,7 +354,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
   const username = currentUser.name || currentUser.username || currentUser.email || 'User';
   const currentRole = currentUser.jobTitle || currentUser.role || (role && role.toLowerCase() !== 'admin' ? role : '') || 'Admin';
   const userEmail = currentUser.company_email || currentUser.email || currentUser.personal_email || currentUser.username || '';
-  const currentAvatar = currentUser.avatarUrl || currentUser.avatar || getStoredAvatar(currentUser, role) || null;
+  const currentAvatar = currentUser.avatarUrl || currentUser.avatar || null;
 
   const [activeTab, setActiveTab] = useState('info');
 
@@ -400,14 +400,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64Data = reader.result;
-      saveStoredAvatar(currentUser, base64Data, role);
-      if ((role || currentUser.role || '').toString().toLowerCase().includes('admin')) {
-        authFetch('/api/auth/me/', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatar: base64Data }),
-        }).catch(() => {});
-      }
+      saveStoredAvatar(currentUser, base64Data);
       if (onUpdateUser) {
         onUpdateUser({ avatarUrl: base64Data });
       }
@@ -426,14 +419,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64Data = reader.result;
-        saveStoredAvatar(currentUser, base64Data, role);
-        if ((role || currentUser.role || '').toString().toLowerCase().includes('admin')) {
-          authFetch('/api/auth/me/', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ avatar: base64Data }),
-          }).catch(() => {});
-        }
+        saveStoredAvatar(currentUser, base64Data);
         if (onUpdateUser) {
           onUpdateUser({ avatarUrl: base64Data });
         }
@@ -457,14 +443,7 @@ export function ProfileModal({ user = {}, role = '', onClose, onUpdateUser }) {
     setAvatarFeedback(null);
 
     try {
-      saveStoredAvatar(currentUser, null, role);
-      if ((role || currentUser.role || '').toString().toLowerCase().includes('admin')) {
-        authFetch('/api/auth/me/', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatar: '' }),
-        }).catch(() => {});
-      }
+      saveStoredAvatar(currentUser, null);
       if (onUpdateUser) {
         onUpdateUser({ avatarUrl: null });
       }

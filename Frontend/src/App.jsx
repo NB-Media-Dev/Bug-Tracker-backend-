@@ -257,21 +257,16 @@ function App() {
             if (res.ok) {
               const freshAdmin = await res.json();
               const adminName = freshAdmin.username || freshAdmin.first_name || storedAuth.user?.username || "Admin";
-              const adminAvatar = freshAdmin.avatar || freshAdmin.avatarUrl || storedAuth.user?.avatarUrl || getStoredAvatar({ ...storedAuth.user, role: "admin" }, "admin");
               const mergedUser = {
                 ...storedAuth.user,
                 ...freshAdmin,
                 name: adminName,
                 username: freshAdmin.username || adminName,
                 role: "Admin",
-                avatarUrl: adminAvatar || undefined,
               };
               delete mergedUser.employee_id;
               delete mergedUser.jobTitle;
               localStorage.setItem("admin_user", JSON.stringify(mergedUser));
-              if (adminAvatar) {
-                saveStoredAvatar(mergedUser, adminAvatar, "admin");
-              }
               setAuthUser(mergedUser);
             }
           } else {
@@ -587,7 +582,7 @@ function App() {
                   const updatedUser = { ...authUser, ...updated };
                   setAuthUser(updatedUser);
                   localStorage.setItem("admin_user", JSON.stringify(updatedUser));
-                  saveStoredAvatar(updatedUser, updated.avatarUrl !== undefined ? updated.avatarUrl : getStoredAvatar(updatedUser, isCTO ? "cto" : "admin"), isCTO ? "cto" : "admin");
+                  saveStoredAvatar(updatedUser, updated.avatarUrl !== undefined ? updated.avatarUrl : getStoredAvatar(updatedUser));
                   window.dispatchEvent(new Event("user_profile_updated"));
                 }}
               />

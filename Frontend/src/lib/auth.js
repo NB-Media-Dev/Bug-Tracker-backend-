@@ -64,21 +64,10 @@ export const clearAuthStorage = () => {
 };
 
 
-import { getStoredAvatar, saveStoredAvatar } from "./avatar";
-
 export const setAdminAuth = (token, refreshToken, user) => {
   setLocalStorageItem(ACCESS_TOKEN_KEY, token);
   setLocalStorageItem(REFRESH_TOKEN_KEY, refreshToken);
-  const adminUser = { ...user };
-  if (adminUser.avatar && !adminUser.avatarUrl) {
-    adminUser.avatarUrl = adminUser.avatar;
-  }
-  const fallbackAvatar = adminUser.avatarUrl || getStoredAvatar(adminUser, "admin");
-  if (fallbackAvatar) {
-    adminUser.avatarUrl = fallbackAvatar;
-    saveStoredAvatar(adminUser, fallbackAvatar, "admin");
-  }
-  setLocalStorageJson(ADMIN_USER_KEY, adminUser);
+  setLocalStorageJson(ADMIN_USER_KEY, user);
   removeLocalStorageItem(DEVELOPER_USER_KEY);
   removeLocalStorageItem(TESTER_USER_KEY);
 };
@@ -86,14 +75,7 @@ export const setAdminAuth = (token, refreshToken, user) => {
 export const setDeveloperAuth = (user, token = "", refreshToken = "") => {
   if (token) setLocalStorageItem(ACCESS_TOKEN_KEY, token);
   if (refreshToken) setLocalStorageItem(REFRESH_TOKEN_KEY, refreshToken);
-  const devUser = { ...user };
-  const role = (devUser.role || "").toLowerCase().includes("des") ? "designer" : "developer";
-  const fallbackAvatar = devUser.avatarUrl || devUser.avatar || getStoredAvatar(devUser, role);
-  if (fallbackAvatar) {
-    devUser.avatarUrl = fallbackAvatar;
-    saveStoredAvatar(devUser, fallbackAvatar, role);
-  }
-  setLocalStorageJson(DEVELOPER_USER_KEY, devUser);
+  setLocalStorageJson(DEVELOPER_USER_KEY, user);
   removeLocalStorageItem(ADMIN_USER_KEY);
   removeLocalStorageItem(TESTER_USER_KEY);
 };
@@ -101,13 +83,7 @@ export const setDeveloperAuth = (user, token = "", refreshToken = "") => {
 export const setTesterAuth = (user, token = "", refreshToken = "") => {
   if (token) setLocalStorageItem(ACCESS_TOKEN_KEY, token);
   if (refreshToken) setLocalStorageItem(REFRESH_TOKEN_KEY, refreshToken);
-  const testerUser = { ...user };
-  const fallbackAvatar = testerUser.avatarUrl || testerUser.avatar || getStoredAvatar(testerUser, "tester");
-  if (fallbackAvatar) {
-    testerUser.avatarUrl = fallbackAvatar;
-    saveStoredAvatar(testerUser, fallbackAvatar, "tester");
-  }
-  setLocalStorageJson(TESTER_USER_KEY, testerUser);
+  setLocalStorageJson(TESTER_USER_KEY, user);
   removeLocalStorageItem(ADMIN_USER_KEY);
   removeLocalStorageItem(DEVELOPER_USER_KEY);
 };

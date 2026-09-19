@@ -55,4 +55,3 @@ class AdminProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     is_staff = serializers.BooleanField()
-    avatar = serializers.CharField(required=False, allow_blank=True, default='')
