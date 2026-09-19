@@ -1126,7 +1126,8 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
                     </div>
                   </div>
                 </div>
-              </div>)};
+              </div>
+            )}
           </main>
         </div>
     </div>

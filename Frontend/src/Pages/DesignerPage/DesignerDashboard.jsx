@@ -1123,7 +1123,8 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                     </div>
                   </div>
                 </div>
-              </div>)};
+              </div>
+            )}
           </main>
         </div>
     </div>
