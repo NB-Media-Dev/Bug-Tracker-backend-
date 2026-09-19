@@ -755,7 +755,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                                 }
 
                                 setShowNotifDropdown(false);
-                                handleNavigate("/developer/myreport");
+                                handleNavigate("/designer/myreport");
                               }}
                               className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 relative group ${unread
                                 ? "bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50/80"
@@ -803,7 +803,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                         type="button"
                         onClick={() => {
                           setShowNotifDropdown(false);
-                          handleNavigate("/developer/myreport");
+                          handleNavigate("/designer/myreport");
                         }}
                         className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                       >
@@ -836,10 +836,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
             {(currentPath === "/designer/history" || currentPath === "/developer/history") && (
               <DesignerHistory designer={developer} />
             )}
-            {(currentPath === "/designer/profile" || currentPath === "/developer/profile") && (
-              <DeveloperProfile developer={developer} />
-            )}
-            {currentPath === "/developer/help" && (
+            {(currentPath === "/designer/help" || currentPath === "/developer/help") && (
               <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl border border-gray-200 shadow-2xs space-y-4">
                 <div className="flex items-center gap-2">
                   <HelpCircle className="text-blue-600" size={24} />
@@ -884,7 +881,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
               </div>
             )}
 
-            {(currentPath === "/developer/dashboard" || currentPath === "/" || !["/developer/sendproject", "/developer/myreport", "/developer/history", "/developer/profile", "/developer/help"].includes(currentPath)) && (
+            {!["/designer/sendproject", "/developer/sendproject", "/designer/myreport", "/developer/myreport", "/designer/history", "/developer/history", "/designer/profile", "/developer/profile", "/designer/help", "/developer/help"].includes(currentPath) && (
               <div className="max-w-7xl mx-auto space-y-6">
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
@@ -911,7 +908,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                   </div>
 
                   <button
-                    onClick={() => handleNavigate("/developer/myreport")}
+                    onClick={() => handleNavigate("/designer/myreport")}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-2xs transition-colors cursor-pointer shrink-0"
                   >
                     <Bug className="h-4 w-4" /> View My Report Tasks
@@ -980,7 +977,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                         </p>
                       </div>
                       <button
-                        onClick={() => handleNavigate("/developer/myreport")}
+                        onClick={() => handleNavigate("/designer/myreport")}
                         className="text-xs font-semibold text-blue-600 hover:text-blue-700"
                       >
                         View full list →
@@ -1076,7 +1073,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
                           return (
                             <div
                               key={activity.id}
-                              onClick={() => handleNavigate("/developer/myreport")}
+                              onClick={() => handleNavigate("/designer/myreport")}
                               className="rounded-2xl border border-slate-200/90 hover:border-blue-300 p-3.5 bg-gradient-to-r from-slate-50/90 to-white hover:from-blue-50/40 hover:to-white shadow-2xs hover:shadow transition-all cursor-pointer flex items-start gap-3 group"
                             >
                               <div className="p-2 rounded-xl bg-white border border-slate-200 shrink-0 mt-0.5 shadow-2xs">

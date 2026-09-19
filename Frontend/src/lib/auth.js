@@ -14,21 +14,34 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 export const REQUIRE_PWD_CHANGE_KEY = import.meta.env.VITE_REQUIRE_PWD_CHANGE_KEY || "require_pwd_change";
 
 
+export const ACTIVE_ROLE_KEY = "active_role";
+
+
 export const getStoredAuth = () => {
   const token = getLocalStorageItem(ACCESS_TOKEN_KEY, "");
   const adminUser = getLocalStorageJson(ADMIN_USER_KEY, null);
   const developerUser = getLocalStorageJson(DEVELOPER_USER_KEY, null);
   const testerUser = getLocalStorageJson(TESTER_USER_KEY, null);
+  const activeRole = (getLocalStorageItem(ACTIVE_ROLE_KEY, "") || getLocalStorageItem("user_role", "")).toLowerCase().trim();
 
   if (adminUser && token) {
     const isCto = (adminUser?.role || "").toString().toLowerCase() === "cto" ||
-      getLocalStorageItem("admin_portal_role", "") === "cto";
+      getLocalStorageItem("admin_portal_role", "") === "cto" ||
+      activeRole === "cto";
     return { role: isCto ? "cto" : "admin", user: adminUser };
   }
 
   if (developerUser) {
-    const userRole = (developerUser.role || "developer").toLowerCase();
-    return { role: userRole === "designer" ? "designer" : "developer", user: developerUser };
+    const roleStr = (developerUser.role || developerUser.jobTitle || "").toString().toLowerCase().trim();
+    const empIdStr = (developerUser.employee_id || developerUser.id || "").toString().toUpperCase().trim();
+    const isDesigner =
+      activeRole === "designer" ||
+      roleStr === "designer" ||
+      roleStr.includes("design") ||
+      roleStr === "des" ||
+      empIdStr.startsWith("DES");
+
+    return { role: isDesigner ? "designer" : "developer", user: developerUser };
   }
 
   if (testerUser) {
@@ -46,6 +59,8 @@ export const clearAuthStorage = () => {
   removeLocalStorageItem(TESTER_USER_KEY);
   removeLocalStorageItem(REQUIRE_PWD_CHANGE_KEY);
   removeLocalStorageItem("admin_portal_role");
+  removeLocalStorageItem(ACTIVE_ROLE_KEY);
+  removeLocalStorageItem("user_role");
 };
 
 

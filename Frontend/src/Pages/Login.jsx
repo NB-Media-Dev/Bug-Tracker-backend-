@@ -47,14 +47,24 @@ function Login({ onLoginSuccess, onDeveloperLoginSuccess }) {
     }
 
     clearAuthStorage();
+    const empIdUpper = (empData.employee?.employee_id || "").toUpperCase();
+    const isDesigner = empRole.includes("designer") || empRole.includes("des") || empIdUpper.startsWith("DES");
+
     if (empRole.includes("cto")) {
       localStorage.setItem("admin_portal_role", "cto");
+      localStorage.setItem("active_role", "cto");
       setAdminAuth(empData.access, empData.refresh, empData.employee);
       onLoginSuccess(empData.employee);
-    } else if (empRole.includes("developer") || empRole.includes("dev") || empRole.includes("designer") || empRole.includes("des")) {
+    } else if (isDesigner) {
+      localStorage.setItem("active_role", "designer");
       setDeveloperAuth(empData.employee, empData.access, empData.refresh);
-      onDeveloperLoginSuccess(empData.employee, empRole.includes("designer") || empRole.includes("des") ? "designer" : "developer");
+      onDeveloperLoginSuccess(empData.employee, "designer");
+    } else if (empRole.includes("developer") || empRole.includes("dev") || empIdUpper.startsWith("DEV")) {
+      localStorage.setItem("active_role", "developer");
+      setDeveloperAuth(empData.employee, empData.access, empData.refresh);
+      onDeveloperLoginSuccess(empData.employee, "developer");
     } else {
+      localStorage.setItem("active_role", "tester");
       setTesterAuth(empData.employee, empData.access, empData.refresh);
       onDeveloperLoginSuccess(empData.employee, "tester");
     }

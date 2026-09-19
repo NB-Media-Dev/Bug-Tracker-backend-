@@ -264,8 +264,11 @@ function App() {
                 name: storedAuth.user.name || freshUser.name,
                 jobTitle: storedAuth.user.jobTitle || storedAuth.user.role || freshUser.role,
               };
-              if (storedAuth.role === "developer" || storedAuth.role === "tester") {
-                localStorage.setItem(`${storedAuth.role}_user`, JSON.stringify(mergedUser));
+              if (storedAuth.role === "developer" || storedAuth.role === "designer" || storedAuth.role === "tester") {
+                localStorage.setItem("developer_user", JSON.stringify(mergedUser));
+                if (storedAuth.role === "tester") {
+                  localStorage.setItem("tester_user", JSON.stringify(mergedUser));
+                }
               } else if (storedAuth.role === "admin" || storedAuth.role === "cto") {
                 localStorage.setItem("admin_user", JSON.stringify(mergedUser));
               }
@@ -323,8 +326,12 @@ function App() {
     setAuthUser(user);
     if (isCto) {
       localStorage.setItem("admin_portal_role", "cto");
+      localStorage.setItem("active_role", "cto");
     } else if (type === "admin") {
       localStorage.setItem("admin_portal_role", "admin");
+      localStorage.setItem("active_role", "admin");
+    } else {
+      localStorage.setItem("active_role", effectiveRole);
     }
     loadAdminNotifications();
     navigate("/");
