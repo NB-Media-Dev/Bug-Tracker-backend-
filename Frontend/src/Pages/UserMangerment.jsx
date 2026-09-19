@@ -222,7 +222,7 @@ function UserManagement({ isReadOnly = false, userRole = '' }) {
         label: 'DEVELOPERS',
         value: developersCount,
         icon: Code,
-        color: 'bg-blue-600 text-white shadow-xs',
+        color: 'bg-blue-500 text-white shadow-xs',
         accent: 'bg-blue-500',
       },
       {
