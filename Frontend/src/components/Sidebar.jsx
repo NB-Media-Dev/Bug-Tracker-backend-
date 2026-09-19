@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, LogOut, User as UserIcon } from "lucide-react";
+import { getStoredAvatar } from "../lib/avatar";
 
 export default function Sidebar({
   open = false,
@@ -9,12 +10,23 @@ export default function Sidebar({
   currentPath = "/",
   onNavigate = () => { },
   onLogout = () => { },
+  onProfileClick,
   navItems = [],
   title = "Bugtracker",
   badgeText = "",
   user = { initials: "", name: "User", role: "Member" },
 }) {
   const [showLogout, setShowLogout] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState(() => getStoredAvatar(user));
+
+  useEffect(() => {
+    const updateAvatar = () => {
+      setAvatarSrc(getStoredAvatar(user));
+    };
+    updateAvatar();
+    window.addEventListener("user_profile_updated", updateAvatar);
+    return () => window.removeEventListener("user_profile_updated", updateAvatar);
+  }, [user]);
 
   return (
     <>
@@ -86,15 +98,27 @@ export default function Sidebar({
           <div className="p-3 border-t border-slate-800 shrink-0 relative">
             {showLogout && (
               <div
-                className={`absolute bottom-[72px] bg-slate-800 border border-slate-700 rounded-lg shadow-lg p-1.5 z-50 transition-all duration-300 ${isCollapsed ? "left-2 w-32" : "left-3 right-3"
+                className={`absolute bottom-[72px] bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-1.5 z-50 transition-all duration-300 space-y-1 ${isCollapsed ? "left-2 w-36" : "left-3 right-3"
                   }`}
               >
+                {typeof onProfileClick === "function" && (
+                  <button
+                    onClick={() => {
+                      setShowLogout(false);
+                      onProfileClick();
+                    }}
+                    className="flex items-center gap-2.5 w-full p-2 text-xs text-slate-200 hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer font-medium"
+                  >
+                    <UserIcon className="h-4 w-4 shrink-0 text-blue-400" />
+                    <span>My Account Profile</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setShowLogout(false);
                     onLogout();
                   }}
-                  className="flex items-center gap-2.5 w-full p-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-colors cursor-pointer font-medium"
+                  className="flex items-center gap-2.5 w-full p-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer font-medium"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
                   <span>Log out</span>
@@ -107,9 +131,17 @@ export default function Sidebar({
               className={`flex items-center w-full p-2 rounded-lg hover:bg-slate-800 text-slate-200 transition-all duration-300 text-sm font-medium cursor-pointer ${isCollapsed ? "justify-center" : "gap-3"
                 }`}
             >
-              <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 text-xs uppercase">
-                {user.initials}
-              </div>
+              {avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt={user.name || "User"}
+                  className="h-8 w-8 rounded-full object-cover border border-slate-700 shrink-0"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 text-xs uppercase">
+                  {user.initials}
+                </div>
+              )}
               <div
                 className={`flex flex-col text-left transition-all duration-300 overflow-hidden whitespace-nowrap ${isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
                   }`}

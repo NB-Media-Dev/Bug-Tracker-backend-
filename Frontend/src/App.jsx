@@ -252,27 +252,50 @@ function App() {
       const storedAuth = getStoredAuth();
       if (storedAuth.role && storedAuth.user) {
         try {
-          const res = await authFetch(`${API_BASE}/api/users/`);
-          if (res.ok) {
-            const data = await res.json();
-            const results = data.results || (Array.isArray(data) ? data : []);
-            const freshUser = results.find(emp => emp.id === storedAuth.user.id || emp.employee_id === storedAuth.user.employee_id || emp.company_email === storedAuth.user.company_email);
-            if (freshUser) {
+          if (storedAuth.role === "admin") {
+            const res = await authFetch(`${API_BASE}/api/auth/me/`);
+            if (res.ok) {
+              const freshAdmin = await res.json();
+              const adminName = freshAdmin.username || freshAdmin.first_name || storedAuth.user?.username || "Admin";
               const mergedUser = {
-                ...freshUser,
                 ...storedAuth.user,
-                name: storedAuth.user.name || freshUser.name,
-                jobTitle: storedAuth.user.jobTitle || storedAuth.user.role || freshUser.role,
+                ...freshAdmin,
+                name: adminName,
+                username: freshAdmin.username || adminName,
+                role: "Admin",
               };
-              if (storedAuth.role === "developer" || storedAuth.role === "designer" || storedAuth.role === "tester") {
-                localStorage.setItem("developer_user", JSON.stringify(mergedUser));
-                if (storedAuth.role === "tester") {
-                  localStorage.setItem("tester_user", JSON.stringify(mergedUser));
-                }
-              } else if (storedAuth.role === "admin" || storedAuth.role === "cto") {
-                localStorage.setItem("admin_user", JSON.stringify(mergedUser));
-              }
+              delete mergedUser.employee_id;
+              delete mergedUser.jobTitle;
+              localStorage.setItem("admin_user", JSON.stringify(mergedUser));
               setAuthUser(mergedUser);
+            }
+          } else {
+            const res = await authFetch(`${API_BASE}/api/users/`);
+            if (res.ok) {
+              const data = await res.json();
+              const results = data.results || (Array.isArray(data) ? data : []);
+              const freshUser = results.find(emp =>
+                (storedAuth.user.employee_id && emp.employee_id === storedAuth.user.employee_id) ||
+                (storedAuth.user.company_email && emp.company_email === storedAuth.user.company_email) ||
+                (emp.id === storedAuth.user.id && storedAuth.role !== "admin")
+              );
+              if (freshUser) {
+                const mergedUser = {
+                  ...freshUser,
+                  ...storedAuth.user,
+                  name: storedAuth.user.name || freshUser.name,
+                  jobTitle: storedAuth.user.jobTitle || storedAuth.user.role || freshUser.role,
+                };
+                if (storedAuth.role === "developer" || storedAuth.role === "designer" || storedAuth.role === "tester") {
+                  localStorage.setItem("developer_user", JSON.stringify(mergedUser));
+                  if (storedAuth.role === "tester") {
+                    localStorage.setItem("tester_user", JSON.stringify(mergedUser));
+                  }
+                } else if (storedAuth.role === "cto") {
+                  localStorage.setItem("admin_user", JSON.stringify(mergedUser));
+                }
+                setAuthUser(mergedUser);
+              }
             }
           }
         } catch (e) {
@@ -506,6 +529,7 @@ function App() {
         currentPath={currentPath}
         onNavigate={navigate}
         onLogout={triggerLogoutModal}
+        onProfileClick={() => setShowProfileModal(true)}
         user={authUser}
         userRole={isCTO ? "cto" : "admin"}
       />

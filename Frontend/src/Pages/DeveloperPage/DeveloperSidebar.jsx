@@ -2,7 +2,17 @@ import React from "react";
 import BaseSidebar from "../../components/Sidebar";
 import { LayoutDashboard, User2, HelpCircle, Bug, History, FileArchive } from "lucide-react";
 
-function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = false, setIsCollapsed = () => { }, currentPath = "/developer/dashboard", onNavigate = () => { }, onLogout = () => { }, developer = null }) {
+function DeveloperSidebar({
+  open = false,
+  onClose = () => { },
+  isCollapsed = false,
+  setIsCollapsed = () => { },
+  currentPath = "/developer/dashboard",
+  onNavigate = () => { },
+  onLogout = () => { },
+  onProfileClick,
+  developer = null
+}) {
   const navItems = [
     { name: "Dashboard", href: "/developer/dashboard", icon: LayoutDashboard },
     { name: "Send Project", href: "/developer/sendproject", icon: FileArchive },
@@ -21,7 +31,7 @@ function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = fal
 
   const userRole = developer?.role || "Developer";
   const badgeText = userRole.toLowerCase() === "designer" ? "Des" : "Dev";
-  const user = { initials, name: devName, role: userRole };
+  const user = { ...developer, initials, name: devName, role: userRole };
 
   return (
     <BaseSidebar
@@ -32,6 +42,7 @@ function DeveloperSidebar({ open = false, onClose = () => { }, isCollapsed = fal
       currentPath={currentPath}
       onNavigate={onNavigate}
       onLogout={onLogout}
+      onProfileClick={onProfileClick}
       navItems={navItems}
       title="Bugtracker"
       badgeText={badgeText}

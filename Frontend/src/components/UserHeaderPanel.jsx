@@ -67,9 +67,12 @@ export default function UserHeaderPanel({ user = {}, role = "", notificationCoun
           </div>
         )}
 
-        <div className="hidden sm:flex min-w-0 items-center gap-2">
-          <div className="truncate text-sm font-semibold text-slate-900 max-w-[100px] group-hover:text-indigo-600 transition-colors">
+        <div className="hidden sm:flex min-w-0 flex-col text-left">
+          <div className="truncate text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 max-w-[130px] group-hover:text-indigo-600 transition-colors leading-tight">
             {user.name || user.username || "User"}
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400 capitalize leading-none mt-0.5 font-medium">
+            {user.role || role || "Member"}
           </div>
         </div>
 

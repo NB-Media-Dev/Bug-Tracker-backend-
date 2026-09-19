@@ -604,6 +604,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
         currentPath={currentPath}
         onNavigate={handleNavigate}
         onLogout={onLogout}
+        onProfileClick={() => setShowProfileModal(true)}
         designer={developer}
       />
 

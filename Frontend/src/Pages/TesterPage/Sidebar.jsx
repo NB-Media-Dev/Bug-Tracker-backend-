@@ -22,6 +22,7 @@ function Sidebar(props) {
     .toUpperCase() || "TS";
 
   const user = {
+    ...tester,
     initials,
     name: testerName,
     role: tester.role || "Tester"

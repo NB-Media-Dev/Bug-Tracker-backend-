@@ -604,6 +604,7 @@ function DeveloperDashboard({ developer: propDeveloper, onLogout }) {
         currentPath={currentPath}
         onNavigate={handleNavigate}
         onLogout={onLogout}
+        onProfileClick={() => setShowProfileModal(true)}
         developer={developer}
       />
 

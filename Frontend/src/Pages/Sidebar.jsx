@@ -19,13 +19,16 @@ function Sidebar(props) {
   const navItems = isCTO ? ctoNavItems : adminNavItems;
   const badgeText = isCTO ? "CTO" : "Admin";
 
-  const userName = props.user?.name || props.user?.username || (isCTO ? "CTO User" : "Admin User");
+  const userName = isCTO
+    ? (props.user?.name || props.user?.username || "CTO User")
+    : (props.user?.username || props.user?.name || "Admin User");
   const userInitials = userName ? userName.charAt(0).toUpperCase() : (isCTO ? "C" : "A");
 
   const sidebarUser = {
+    ...props.user,
     initials: userInitials,
     name: userName,
-    role: isCTO ? "CTO Portal" : "Admin Portal"
+    role: isCTO ? "CTO" : (props.user?.role || "Admin")
   };
 
   return <BaseSidebar {...props} navItems={navItems} title="Bugtracker" badgeText={badgeText} user={sidebarUser} />;

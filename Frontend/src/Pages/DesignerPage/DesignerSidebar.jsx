@@ -10,6 +10,7 @@ function DesignerSidebar({
   currentPath = "/designer/dashboard",
   onNavigate = () => { },
   onLogout = () => { },
+  onProfileClick,
   designer = null,
 }) {
   const navItems = [
@@ -28,7 +29,8 @@ function DesignerSidebar({
     .slice(0, 2)
     .toUpperCase() || "DS";
 
-  const user = { initials, name: designerName, role: "Designer" };
+  const userRole = designer?.role || "Designer";
+  const user = { ...designer, initials, name: designerName, role: userRole };
 
   return (
     <BaseSidebar
@@ -39,6 +41,7 @@ function DesignerSidebar({
       currentPath={currentPath}
       onNavigate={onNavigate}
       onLogout={onLogout}
+      onProfileClick={onProfileClick}
       navItems={navItems}
       title="Bugtracker"
       badgeText="Des"

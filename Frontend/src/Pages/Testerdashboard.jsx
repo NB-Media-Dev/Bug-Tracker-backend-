@@ -532,6 +532,8 @@ function Testerdashboard({ tester: propTester, onLogout }) {
           currentPath={currentPath}
           onNavigate={navigate}
           onLogout={onLogout}
+          user={test}
+          onProfileClick={() => setShowProfileModal(true)}
         />
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
