@@ -263,7 +263,7 @@ function DesignerHistory({ designer, developer: propDev }) {
   };
 
   return (
-    <div className="w-full max-w-[1800px] mx-auto space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
+    <div className="w-full space-y-6 font-sans text-gray-800 antialiased px-1 sm:px-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">

@@ -837,7 +837,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
               <DesignerHistory designer={developer} />
             )}
             {(currentPath === "/designer/help" || currentPath === "/developer/help") && (
-              <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl border border-gray-200 shadow-2xs space-y-4">
+              <div className="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-2xs space-y-4">
                 <div className="flex items-center gap-2">
                   <HelpCircle className="text-blue-600" size={24} />
                   <h2 className="text-xl font-bold text-gray-900">
@@ -882,7 +882,7 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
             )}
 
             {!["/designer/sendproject", "/developer/sendproject", "/designer/myreport", "/developer/myreport", "/designer/history", "/developer/history", "/designer/profile", "/developer/profile", "/designer/help", "/developer/help"].includes(currentPath) && (
-              <div className="max-w-7xl mx-auto space-y-6">
+              <div className="w-full space-y-6">
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-base uppercase shadow-xs">

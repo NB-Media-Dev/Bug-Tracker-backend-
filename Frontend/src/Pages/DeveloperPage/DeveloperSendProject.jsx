@@ -288,7 +288,7 @@ function DeveloperSendProject({ developer }) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 font-sans text-gray-800 antialiased">
+    <div className="w-full space-y-6 font-sans text-gray-800 antialiased">
       <div>
         <div className="flex items-center gap-2">
           <FileArchive className="h-6 w-6 text-blue-600" />
