@@ -821,9 +821,6 @@ function DesignerDashboard({ designer: propDesigner, developer: propDeveloper, o
           <main className="flex-1 min-h-0 p-3 sm:p-6 overflow-x-hidden overflow-y-auto min-w-0">
             <DeveloperReminderModal
               dueBugs={dueBugsList}
-              onViewBug={() => {
-                handleNavigate("/designer/myreport");
-              }}
             />
             {(currentPath === "/designer/sendproject" || currentPath === "/developer/sendproject") && (
               <DesignerSendProject designer={developer} />

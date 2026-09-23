@@ -11,10 +11,9 @@ import {
   Bug,
   Sparkles,
 } from "lucide-react";
-
 export default function DeveloperReminderModal({
   dueBugs = [],
-  
+  onViewBug,
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -133,7 +132,12 @@ export default function DeveloperReminderModal({
 
   return (
     <div className="mb-5 transition-all duration-300 animate-in fade-in slide-in-from-top-3">
-      <div className={`relative w-full rounded-2xl border p-4 sm:p-5 ${bannerClasses} overflow-hidden backdrop-blur-md`}>
+      <div
+        onClick={() => onViewBug && onViewBug(currentBug)}
+        className={`relative w-full rounded-2xl border p-4 sm:p-5 ${bannerClasses} overflow-hidden backdrop-blur-md ${
+          onViewBug ? "cursor-pointer hover:shadow-lg transition-all" : ""
+        }`}
+      >
         {/* Decorative corner glow */}
         <div className={`absolute -right-8 -top-8 w-24 h-24 rounded-full blur-xl opacity-40 pointer-events-none ${isOverdueOrToday ? 'bg-rose-400' : 'bg-amber-400'}`} />
 
@@ -182,7 +186,10 @@ export default function DeveloperReminderModal({
           </div>
 
           {/* Right section: Sequential Bug Controls & Action CTA Button */}
-          <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/60 dark:border-slate-800/60">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-3 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/60 dark:border-slate-800/60"
+          >
             {dueBugs.length > 1 && (
               <div className="flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-2xs">
                 <button
