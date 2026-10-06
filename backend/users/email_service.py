@@ -3,6 +3,71 @@ import threading
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 
+try:
+    import requests
+except ImportError:
+    requests = None
+
+
+def _dispatch_email(
+    to_email: str,
+    subject: str,
+    text_content: str,
+    html_content: str,
+    recipient_name: str = "",
+) -> bool:
+    """
+    Sends an email using Brevo HTTPS API if BREVO_API_KEY is configured in settings.
+    Falls back to Django's standard EmailMultiAlternatives (SMTP or default backend) if Brevo is not set or fails.
+    """
+    brevo_api_key = getattr(settings, 'BREVO_API_KEY', '')
+    if brevo_api_key:
+        brevo_api_key = str(brevo_api_key).strip()
+
+    sender_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@company.com')
+    sender_name = getattr(settings, 'DEFAULT_FROM_NAME', 'BugTracker Admin')
+    from_email = f"{sender_name} <{sender_email}>" if sender_name else sender_email
+
+    # 1. Brevo HTTPS API (recommended for cloud hosts like Render/Railway where outbound SMTP is blocked)
+    if brevo_api_key and requests is not None:
+        try:
+            url = "https://api.brevo.com/v3/smtp/email"
+            headers = {
+                "accept": "application/json",
+                "api-key": brevo_api_key,
+                "content-type": "application/json",
+            }
+            payload = {
+                "sender": {"name": sender_name, "email": sender_email},
+                "to": [{"email": to_email, "name": recipient_name or to_email}],
+                "subject": subject,
+                "htmlContent": html_content,
+                "textContent": text_content,
+            }
+            response = requests.post(url, json=payload, headers=headers, timeout=12)
+            if response.status_code in (200, 201, 202):
+                return True
+            else:
+                print(f"[Brevo API Error] Status: {response.status_code}, Response: {response.text}")
+        except Exception as api_err:
+            print(f"[Brevo API Exception]: {api_err}")
+
+    # 2. Django Email Backend (SMTP or configured backend fallback)
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=[to_email],
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=False)
+        return True
+    except Exception as mail_err:
+        print(f"[Django Mail Error]: {mail_err}")
+        return False
+
+
 def send_invite_email(
     employee_name: str,
     company_email: str,
@@ -163,7 +228,36 @@ The BugTracker Admin Team
 </html>
 """
 
-   
+    try:
+        sent = _dispatch_email(
+            to_email=company_email,
+            subject=subject,
+            text_content=text_content,
+            html_content=html_content,
+            recipient_name=employee_name,
+        )
+
+        if sent:
+            print("\n" + "=" * 60)
+            print("[EMAIL SENT SUCCESSFULLY]")
+            print(f"   Recipient: {company_email}")
+            print("=" * 60 + "\n")
+
+            if employee_id:
+                try:
+                    from .models import Employee
+                    Employee.objects.filter(pk=employee_id).update(invite_sent=True)
+                except Exception as db_err:
+                    print(f"   [Warning] Could not update invite_sent: {db_err}")
+
+            return True
+        else:
+            print("\n" + "=" * 60)
+            print("[EMAIL FAILED TO SEND]")
+            print(f"   Recipient: {company_email}")
+            print("=" * 60 + "\n")
+            return False
+
     except Exception as e:
         print("\n" + "=" * 60)
         print("[EMAIL FAILED TO SEND]")
@@ -331,13 +425,28 @@ The BugTracker Admin Team
 </html>
 """
     try:
-        msg = EmailMultiAlternatives(subject, text_content, from_email, [email])
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
-        print("\n" + "=" * 60)
-        print("[EMAIL SENT SUCCESSFULLY]")
-        print("=" * 60 + "\n")
-        return True
+        sent = _dispatch_email(
+            to_email=email,
+            subject=subject,
+            text_content=text_content,
+            html_content=html_content,
+            recipient_name=employee_name,
+        )
+
+        if sent:
+            print("\n" + "=" * 60)
+            print("[EMAIL SENT SUCCESSFULLY]")
+            print(f"   To       : {email}")
+            print(f"   Temp Pass: {temp_password}")
+            print("=" * 60 + "\n")
+            return True
+        else:
+            print("\n" + "=" * 60)
+            print("[EMAIL FAILED TO SEND]")
+            print(f"   To    : {email}")
+            print("=" * 60 + "\n")
+            return False
+
     except Exception as e:
         print("\n" + "=" * 60)
         print("[EMAIL FAILED TO SEND]")
