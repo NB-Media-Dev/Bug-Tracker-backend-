@@ -163,25 +163,7 @@ The BugTracker Admin Team
 </html>
 """
 
-    try:
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=text_content,
-            from_email=from_email,
-            to=[company_email],
-        )
-        email.attach_alternative(html_content, "text/html")
-        email.send(fail_silently=False)
-
-        print("\n" + "=" * 60)
-        print("[EMAIL SENT SUCCESSFULLY]")
-        print("=" * 60 + "\n")
-
-        if employee_id:
-            from .models import Employee
-            Employee.objects.filter(pk=employee_id).update(invite_sent=True)
-
-        return True
+   
     except Exception as e:
         print("\n" + "=" * 60)
         print("[EMAIL FAILED TO SEND]")

@@ -154,13 +154,13 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='BugTracker Admin <no-reply@company.com>')
+# ----------------------------------------------------
+# BREVO API CONFIGURATION (Render HTTPS API)
+# ----------------------------------------------------
+BREVO_API_KEY = config('BREVO_API_KEY', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@company.com')
+DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='BugTracker Admin')
+
 
 
 COMPANY_DOMAIN = config('COMPANY_DOMAIN', default='company.com')
