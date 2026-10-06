@@ -241,6 +241,7 @@ The BugTracker Admin Team
             print("\n" + "=" * 60)
             print("[EMAIL SENT SUCCESSFULLY]")
             print(f"   Recipient: {company_email}")
+            print(f" mail pass :{plain_password}")
             print("=" * 60 + "\n")
 
             if employee_id:
