@@ -158,7 +158,7 @@ CORS_ALLOW_CREDENTIALS = True
 # BREVO API CONFIGURATION (Render HTTPS API)
 # ----------------------------------------------------
 BREVO_API_KEY = config('BREVO_API_KEY', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@company.com')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL',default=config('BREVO_SENDER_EMAIL', default='no-reply@company.com'))
 DEFAULT_FROM_NAME = config('DEFAULT_FROM_NAME', default='BugTracker Admin')
 
 
